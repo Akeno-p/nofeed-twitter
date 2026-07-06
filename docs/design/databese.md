@@ -1,21 +1,24 @@
 # データベース設計
 
+## マーメイド記法
+
+```mermaid
+erDiagram
+    users ||--o| accounts : "認証情報"
+    users ||--o{ tweets:"ツイート"
+    users ||--o{ conversations:"DMの部屋"
+    conversations||--|{ direct_messages:"DM"
+    users ||--o{ direct_messages:"DM"
+    tweets ||--o{ media:"ツイートの写真"
+    direct_messages||--o{ media:"DMの写真"
+```
+
+## Django
+
 ```python
-class Account(models.Model):
-    """自分自身の認証・トークン管理用"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, help_text="Userテーブルへの参照")
-    access_token = models.TextField(help_text="OAuth 2.0 アクセストークン")
-    refresh_token = models.TextField(blank=True, null=True, help_text="OAuth 2.0 リフレッシュトークン")
-    token_expires_at = models.DateTimeField(blank=True, null=True, help_text="アクセストークンの有効期限")
-    totp_secret = models.TextField(blank=True, null=True, help_text="TOTP秘密鍵（暗号化）")
-
-    class Meta:
-        db_table = "account"
-
-
 class User(models.Model):
-    """表示用のユーザー情報（自分 + 他者）"""
-    id = models.BigIntegerField(primary_key=True, help_text="XのユーザーID")
+    """ユーザー情報"""
+    id = models.BigIntegerField(primary_key=True, help_text="TwitterのユーザーID")
     username = models.CharField(max_length=50, help_text="ユーザー名（@の後ろ）")
     name = models.CharField(max_length=100, help_text="表示名")
     profile_image_url = models.URLField(blank=True, null=True, help_text="アイコン画像URL")
@@ -24,10 +27,23 @@ class User(models.Model):
         db_table = "users"
 
 
-class Post(models.Model):
+class Account(models.Model):
+    """nofeed-Twitter利用者の認証・トークン管理用"""
+    id = models.BigAutoField(primary_key=True) # 他テーブルと記述を揃えるため、明示的にpkを指定
+    user = models.OneToOneField(User, on_delete=models.CASCADE, help_text="Userテーブルへの参照")
+    access_token = models.TextField(help_text="OAuth 2.0 アクセストークン")
+    refresh_token = models.TextField(blank=True, null=True, help_text="OAuth 2.0 リフレッシュトークン")
+    access_token_expires_at = models.DateTimeField(blank=True, null=True, help_text="アクセストークンの有効期限")
+    totp_secret = models.TextField(blank=True, null=True, help_text="TOTP秘密鍵（暗号化）")
+
+    class Meta:
+        db_table = "accounts"
+
+
+class tweet(models.Model):
     """投稿"""
-    id = models.BigIntegerField(primary_key=True, help_text="Tweet ID")
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts", help_text="投稿者")
+    id = models.BigIntegerField(primary_key=True, help_text="tweetID")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tweets", help_text="投稿者")
     text = models.TextField(help_text="投稿本文")
     created_at = models.DateTimeField(help_text="投稿日時")
     conversation_id = models.BigIntegerField(blank=True, null=True, help_text="会話ID（スレッド管理用）")
@@ -35,26 +51,13 @@ class Post(models.Model):
     referenced_tweet_type = models.CharField(max_length=20, blank=True, null=True, help_text="replied_to / quoted / retweeted")
 
     class Meta:
-        db_table = "posts"
-
-
-class Reply(models.Model):
-    """リプライ"""
-    id = models.BigIntegerField(primary_key=True, help_text="リプライのTweet ID")
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="replies", help_text="どの自分の投稿へのリプライか")
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="replies", help_text="リプライしたユーザー")
-    text = models.TextField(help_text="リプライ本文")
-    created_at = models.DateTimeField(help_text="投稿日時")
-    conversation_id = models.BigIntegerField(blank=True, null=True, help_text="会話ID")
-    in_reply_to_tweet_id = models.BigIntegerField(blank=True, null=True, help_text="リプライ先のTweet ID")
-
-    class Meta:
-        db_table = "replies"
+        db_table = "tweets"
 
 
 class Conversation(models.Model):
     """DMの会話単位"""
-    id = models.CharField(max_length=50, primary_key=True, help_text="dm_conversation_id")
+    id = models.BigAutoField(primary_key=True) # 他テーブルと記述を揃えるため、明示的にpkを指定
+    dm_conversation_id = models.CharField(max_length=50, help_text="dmの会話id") # DMの会話は２人で共有するためPKにできない
     participant = models.ForeignKey(User, on_delete=models.CASCADE, related_name="conversations", help_text="DMの相手")
     last_message_at = models.DateTimeField(blank=True, null=True, help_text="最後のメッセージ日時")
 
@@ -65,7 +68,7 @@ class Conversation(models.Model):
 class DirectMessage(models.Model):
     """DMメッセージ"""
     id = models.BigIntegerField(primary_key=True, help_text="DMイベントID")
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages", help_text="所属する会話")
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages", help_text="DMの部屋")
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_messages", help_text="送信者")
     text = models.TextField(blank=True, null=True, help_text="メッセージ本文")
     created_at = models.DateTimeField(help_text="送信日時")
@@ -84,7 +87,7 @@ class Media(models.Model):
     width = models.IntegerField(blank=True, null=True)
     height = models.IntegerField(blank=True, null=True)
     duration_ms = models.IntegerField(blank=True, null=True, help_text="動画の場合の長さ（ミリ秒）")
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, blank=True, null=True, related_name="media", help_text="紐づく投稿")
+    tweet = models.ForeignKey(tweet, on_delete=models.CASCADE, blank=True, null=True, related_name="media", help_text="紐づく投稿")
     direct_message = models.ForeignKey(DirectMessage, on_delete=models.CASCADE, blank=True, null=True, related_name="media", help_text="紐づくDM")
 
     class Meta:
