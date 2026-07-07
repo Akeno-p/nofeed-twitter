@@ -7,6 +7,8 @@
 - DM部屋のIDは 【ユーザーid(19桁)-ユーザーid(19桁)】の形式で作成されます。
 - DM部屋のPKは自分と相手とで同じIDを参照するためPKにすることはできないため、自動採番で取得した値をPKにしています。
 - DMにはグループDMという機能がありますが、このシステムではそれに対応させていないため関連するテーブル、カラムは排除しています。
+- api利用料金はdbには保存せず、ブラウザのlocalStorageに保存します。
+- dmのメディアテーブルとツイートのメディアテーブルを分けている理由は、別々のアプリでモデルを定義するためです。
 
 ## ER図
 
@@ -17,8 +19,8 @@ erDiagram
     users ||--o{ conversations:"DMの部屋"
     conversations||--|{ direct_messages:"DM"
     users ||--o{ direct_messages:"DM"
-    tweets ||--o{ media:"ツイートの写真"
-    direct_messages||--o{ media:"DMの写真"
+    tweets ||--o{ tweet_media:"ツイートの写真"
+    direct_messages||--o{ direct_message_media:"DMの写真"
 
 users{
     bigint id PK "ツイッターのユーザーID"
@@ -61,9 +63,19 @@ direct_messages{
     datetime created_at "送信日時"
 }
 
-media{
+tweet_media{
     varchar(50) media_key PK "メディアのID"
-    bigint tweet FK "紐づくツイート"
+    bigint tweet FK "紐ずくツイート"
+    varchar(12) type "メディアの種類"
+    varchar url "画像のurl"
+    text alt_text "代替テキスト"
+    int width "メディアの横幅(px)"
+    int height "メディアの縦幅(px)"
+    int duration_ms "動画の長さ(ミリ秒)"
+}
+
+direct_message_media{
+    varchar(50) media_key PK "メディアのID"
     bigint direct_message FK "紐づくDM"
     varchar(12) type "メディアの種類"
     varchar url "画像のurl"
@@ -114,6 +126,25 @@ class Tweet(models.Model):
     class Meta:
         db_table = "tweets"
 
+class TweetMedia(models.Model):
+    """ツイートのメディア情報（画像・動画）"""
+    class MediaType(models.TextChoices):
+        PHOTO = "photo" , "写真"
+        VIDEO = "video" , "動画"
+        GIF = "animated_gif" , "gif画像"
+
+    media_key = models.CharField(max_length=50, primary_key=True, help_text="Xのmedia_key")
+    tweet = models.ForeignKey(tweet, on_delete=models.CASCADE, blank=True, null=True, related_name="media",help_text="紐づく投稿")
+    type = models.CharField(max_length=12, choices=MediaType.choices, help_text="メディアの種類")
+    url = models.URLField(blank=True, null=True, help_text="メディアのURL")
+    alt_text = models.TextField(blank=True, null=True, help_text="代替テキスト")
+    width = models.IntegerField(blank=True, null=True, help_text="メディアの横幅(px)")
+    height = models.IntegerField(blank=True, null=True, help_text="メディアの縦幅(px)")
+    duration_ms = models.IntegerField(blank=True, null=True, help_text="動画の場合の長さ（ミリ秒）")
+
+    class Meta:
+        db_table = "tweet_media"
+
 
 class Conversation(models.Model):
     """DMの会話単位"""
@@ -138,15 +169,14 @@ class DirectMessage(models.Model):
         db_table = "direct_messages"
 
 
-class Media(models.Model):
-    """メディア情報（画像・動画）"""
+class DirectMessageMedia(models.Model):
+    """DMメディア情報（画像・動画）"""
     class MediaType(models.TextChoices):
         PHOTO = "photo" , "写真"
         VIDEO = "video" , "動画"
         GIF = "animated_gif" , "gif画像"
 
     media_key = models.CharField(max_length=50, primary_key=True, help_text="Xのmedia_key")
-    tweet = models.ForeignKey(tweet, on_delete=models.CASCADE, blank=True, null=True, related_name="media",help_text="紐づく投稿")
     direct_message = models.ForeignKey(DirectMessage, on_delete=models.CASCADE, blank=True, null=True, related_name="media", help_text="紐づくDM")
     type = models.CharField(max_length=12, choices=MediaType.choices, help_text="メディアの種類")
     url = models.URLField(blank=True, null=True, help_text="メディアのURL")
