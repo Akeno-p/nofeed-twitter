@@ -1,0 +1,27 @@
+{
+  "name": "nofeed-twitter",
+  "version": "1.0.0",
+  "description": "Twitterのタイムラインを表示せず、自分の発信とやりとりだけに制限した個人用Xクライアントアプリ。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Akeno-p/x-nofeed.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Akeno-p/x-nofeed/issues"
+  },
+  "homepage": "https://github.com/Akeno-p/x-nofeed#readme",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.3.2",
+    "tailwindcss": "^4.3.2"
+  }
+}
