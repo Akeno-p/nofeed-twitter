@@ -9,6 +9,8 @@
 - DMにはグループDMという機能がありますが、このシステムではそれに対応させていないため関連するテーブル、カラムは排除しています。
 - api利用料金はdbには保存せず、ブラウザのlocalStorageに保存します。
 - dmのメディアテーブルとツイートのメディアテーブルを分けている理由は、別々のアプリでモデルを定義するためです。
+- accountのuserのon_deleteをSET_NULLにしている理由は、Twitterアカウント(user)を削除・変更してもnofeed-twitterのアカウント自体は継続利用できるようにするためです。
+- アクセストークンやTOTP秘密鍵は平文で保存します。DBが流出した場合でも、APIの利用上限はX Developer Portal側で制御されており、その変更にはXアカウントへのログイン（2段階認証あり）が必要なため、実害は限定的と判断しました。リスクが変わった場合は再検討します。
 
 ## ER図
 
@@ -24,9 +26,9 @@ erDiagram
 
 users{
     bigint id PK "ツイッターのユーザーID"
-    varchar username "ユーザー名(@の後ろ)"
-    varchar name "表示名"
-    varchar profile_image_url "アイコン画像URL"
+    varchar(100) username "ユーザー名(@の後ろ)"
+    varchar(100) name "表示名"
+    varchar(URL) profile_image_url "アイコン画像URL"
 }
 
 accounts{
@@ -92,7 +94,7 @@ direct_message_media{
 class User(models.Model):
     """ユーザー情報"""
     id = models.BigIntegerField(primary_key=True, help_text="TwitterのユーザーID")
-    username = models.CharField(max_length=50, help_text="ユーザー名（@の後ろ）")
+    username = models.CharField(max_length=100, help_text="ユーザー名（@の後ろ）")
     name = models.CharField(max_length=100, help_text="表示名")
     profile_image_url = models.URLField(blank=True, null=True, help_text="アイコン画像URL")
 
@@ -107,7 +109,7 @@ class Account(models.Model):
     access_token = models.TextField(help_text="OAuth 2.0 アクセストークン")
     refresh_token = models.TextField(blank=True, null=True, help_text="OAuth 2.0 リフレッシュトークン")
     access_token_expires_at = models.DateTimeField(blank=True, null=True, help_text="アクセストークンの有効期限")
-    totp_secret = models.TextField(blank=True, null=True, help_text="TOTP秘密鍵（暗号化）")
+    totp_secret = models.TextField(blank=True, null=True, help_text="TOTP秘密鍵")
 
     class Meta:
         db_table = "accounts"
