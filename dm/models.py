@@ -1,7 +1,7 @@
 from django.db import models
 
 
-class Conversation(models.Models):
+class Conversation(models.Model):
     """DMの会話単位"""
 
     id = models.BigAutoField(primary_key=True, help_text="DMの会話ID")

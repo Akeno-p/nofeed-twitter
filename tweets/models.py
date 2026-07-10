@@ -4,7 +4,7 @@ from django.db import models
 class Tweet(models.Model):
     """ツイート"""
 
-    id = models.BigIntegerField(primary_key=True, help="tweetID")
+    id = models.BigIntegerField(primary_key=True, help_text="tweetID")
     author = models.ForeignKey(
         "users.User",
         blank=True,
@@ -47,7 +47,7 @@ class TweetMedia(models.Model):
     media_type = models.CharField(
         max_length=12, choices=MediaType.choices, help_text="メディアの種類"
     )
-    url = models.URLField(blank=True, null=True, help="メディアのURL")
+    url = models.URLField(blank=True, null=True, help_text="メディアのURL")
     alt_text = models.TextField(
         blank=True,
         null=True,
