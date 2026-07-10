@@ -9,8 +9,9 @@
 - DMにはグループDMという機能がありますが、このシステムではそれに対応させていないため関連するテーブル、カラムは排除しています。
 - api利用料金はdbには保存せず、ブラウザのlocalStorageに保存します。
 - dmのメディアテーブルとツイートのメディアテーブルを分けている理由は、別々のアプリでモデルを定義するためです。
-- accountのuserのon_deleteをSET_NULLにしている理由は、Twitterアカウント(user)を削除・変更してもnofeed-twitterのアカウント自体は継続利用できるようにするためです。
+- 外部キーのon_deleteは基本的にSET_NULLを採用しています。ユーザー情報が削除されてもツイートやDMまで連鎖削除するメリットがほとんどなく、データ量も少ないため残しておいて問題ないと判断しました。
 - アクセストークンやTOTP秘密鍵は平文で保存します。DBが流出した場合でも、APIの利用上限はX Developer Portal側で制御されており、その変更にはXアカウントへのログイン（2段階認証あり）が必要なため、実害は限定的と判断しました。リスクが変わった場合は再検討します。
+- 逆参照名（related_name）はデフォルトと同じになる場合でも、すべてのリレーションフィールドに明示的に指定します。統一性と可読性を優先するためです。
 
 ## ER図
 
@@ -68,7 +69,7 @@ direct_messages{
 tweet_media{
     varchar(50) media_key PK "メディアのID"
     bigint tweet FK "紐ずくツイート"
-    varchar(12) type "メディアの種類"
+    varchar(12) media_type "メディアの種類"
     varchar url "画像のurl"
     text alt_text "代替テキスト"
     int width "メディアの横幅(px)"
@@ -105,7 +106,7 @@ class User(models.Model):
 class Account(models.Model):
     """nofeed-Twitter利用者の認証・トークン管理用"""
     id = models.BigAutoField(primary_key=True)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, help_text="Userテーブルへの参照")
+    user = models.OneToOneField(User, on_delete=models.SET_NULL, help_text="Userテーブルへの参照")
     access_token = models.TextField(help_text="OAuth 2.0 アクセストークン")
     refresh_token = models.TextField(blank=True, null=True, help_text="OAuth 2.0 リフレッシュトークン")
     access_token_expires_at = models.DateTimeField(blank=True, null=True, help_text="アクセストークンの有効期限")
@@ -118,7 +119,7 @@ class Account(models.Model):
 class Tweet(models.Model):
     """投稿"""
     id = models.BigIntegerField(primary_key=True, help_text="tweetID")
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tweets", help_text="投稿者")
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, related_name="tweets", help_text="投稿者")
     text = models.TextField(help_text="投稿本文")
     created_at = models.DateTimeField(help_text="投稿日時")
     conversation_id = models.BigIntegerField(blank=True, null=True, help_text="会話ID（スレッド管理用）")
@@ -151,7 +152,7 @@ class TweetMedia(models.Model):
 class Conversation(models.Model):
     """DMの会話単位"""
     id = models.BigAutoField(primary_key=True)
-    participant = models.ForeignKey(User, on_delete=models.CASCADE, related_name="conversations", help_text="DMの相手")
+    participant = models.ForeignKey(User, on_delete=models.SET_NULL, related_name="conversations", help_text="DMの相手")
     dm_conversation_id = models.CharField(max_length=50, help_text="dmの会話id")
     last_message_at = models.DateTimeField(blank=True, null=True, help_text="最後のメッセージ日時")
 
@@ -162,7 +163,7 @@ class Conversation(models.Model):
 class DirectMessage(models.Model):
     """DMメッセージ"""
     id = models.BigIntegerField(primary_key=True, help_text="DMメッセージID")
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages", help_text="DMの部屋")
+    conversation = models.ForeignKey(Conversation, on_delete=models.SET_NULL, related_name="messages", help_text="DMの部屋")
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_messages", help_text="送信者")
     text = models.TextField(blank=True, null=True, help_text="メッセージ本文")
     created_at = models.DateTimeField(help_text="送信日時")
