@@ -1,4 +1,11 @@
 asgiref==3.11.1
+certifi==2026.6.17
+charset-normalizer==3.4.9
 Django==5.2
+idna==3.18
+oauthlib==3.3.1
 python-dotenv==1.2.2
+requests==2.34.2
+requests-oauthlib==2.0.0
 sqlparse==0.5.5
+urllib3==2.7.0
