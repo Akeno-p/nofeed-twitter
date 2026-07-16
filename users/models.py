@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 
 class User(models.Model):
@@ -15,7 +16,7 @@ class User(models.Model):
         db_table = "users"
 
 
-class Account(models.Model):
+class Account(AbstractUser):
     """nofeed-twitter利用者の認証・トークン管理用"""
 
     id = models.BigAutoField(primary_key=True)
@@ -27,14 +28,20 @@ class Account(models.Model):
         related_name="account",
         help_text="Userテーブルの参照",
     )
-    access_token = models.TextField(help_text="OAuth 2.0 アクセストークン")
+    access_token = models.TextField(
+        blank=True, null=True, help_text="OAuth 2.0 アクセストークン"
+    )
     refresh_token = models.TextField(
         blank=True, null=True, help_text="OAuth 2.0 リフレッシュトークン"
     )
     access_token_expires_at = models.DateTimeField(
         blank=True, null=True, help_text="アクセストークンの有効期限"
     )
-    totp_secret = models.TextField(blank=True, null=True, help_text="TOTP秘密鍵")
+    totp_secret = models.TextField(
+        blank=True,
+        null=True,
+        help_text="nofeed-twitterの2段階認証用TOTP秘密鍵",
+    )
 
     class Meta:
         db_table = "accounts"

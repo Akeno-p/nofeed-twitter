@@ -12,6 +12,7 @@
 - 外部キーのon_deleteは基本的にSET_NULLを採用しています。ユーザー情報が削除されてもツイートやDMまで連鎖削除するメリットがほとんどなく、データ量も少ないため残しておいて問題ないと判断しました。
 - アクセストークンやTOTP秘密鍵は平文で保存します。DBが流出した場合でも、APIの利用上限はX Developer Portal側で制御されており、その変更にはXアカウントへのログイン（2段階認証あり）が必要なため、実害は限定的と判断しました。リスクが変わった場合は再検討します。
 - 逆参照名（related_name）はデフォルトと同じになる場合でも、すべてのリレーションフィールドに明示的に指定します。統一性と可読性を優先するためです。
+- AbstractUserから継承されるフィールドのうち、first_name・last_name・email・groups・user_permissionsはこのアプリでは使用しないため、ER図には記載していません。
 
 ## ER図
 
@@ -38,7 +39,14 @@ accounts{
     text access_token "OAuth 2.0 アクセストークン"
     text refresh_token "OAuth 2.0 リフレッシュトークン"
     datetime access_token_expires_at "アクセストークンの有効期限"
-    text totp_secret "TOTP秘密鍵"
+    text totp_secret "nofeed-twitterの2段階認証用TOTP秘密鍵"
+    varchar(150) username "nofeed-twitterのアカウント名(AbstractUserから継承)"
+    varchar(128) password "nofeed-twitterのパスワード(AbstractUserから継承)"
+    boolean is_active "利用可否(AbstractUserから継承)"
+    boolean is_staff "admin画面に入れるか(AbstractUserから継承)"
+    boolean is_superuser "全権限を持つか(AbstractUserから継承)"
+    datetime last_login "最終ログイン日時(AbstractUserから継承)"
+    datetime date_joined "アカウント作成日時(AbstractUserから継承)"
 }
 
 tweets{
