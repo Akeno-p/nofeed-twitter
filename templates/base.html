@@ -1,12 +1,13 @@
+{% load static %}
 <!doctype html>
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>nofeed-twitter</title>
+    <link rel="stylesheet" href="{% static 'css/output.css' %}" />
   </head>
-  <body>
-    <h1>うおおおおおおお！！！！！！</h1>
+  <body class="bg-slate-50 text-slate-700">
     {% block content %} {% endblock %}
   </body>
 </html>
