@@ -1,8 +1,10 @@
 {% extends "base_auth.html" %} {% block auth_body %}
-<h1 class="text-4xl font-semibold text-slate-800 text-center">nofeed-x</h1>
+<h1 class="text-4xl font-semibold text-slate-800 text-center">
+  nofeed-twitter
+</h1>
 <div class="mt-4">
-  <label for="login_id" class="block font-semibold text-slate-600"
-    >ログイン ID</label
+  <label for="username" class="block font-semibold text-slate-600"
+    >ユーザー名</label
   >
   <div class="relative mt-2">
     <svg
@@ -21,9 +23,9 @@
     </svg>
     <input
       type="text"
-      id="login_id"
+      id="username"
       class="p-2 pl-12 w-full border-2 border-slate-400 rounded-lg focus:border-slate-500 focus:outline-none focus:ring-3 focus:ring-slate-300"
-      placeholder="id-123"
+      placeholder="user1"
     />
   </div>
 </div>
@@ -49,14 +51,77 @@
     <input
       type="password"
       id="password"
-      class="p-2 pl-12 w-full border-2 border-slate-400 rounded-lg focus:border-slate-500 focus:outline-none focus:ring-3 focus:ring-slate-300"
+      class="p-2 pl-12 w-full border-2 rounded-lg border-slate-400 focus:border-slate-500 focus:ring-slate-300 focus:outline-none focus:ring-3"
       placeholder="12345"
     />
   </div>
 </div>
-<button
-  class="bg-slate-700 text-slate-100 p-3 rounded-lg hover:bg-slate-800 cursor-pointer"
->
-  ログイン
-</button>
+<div>
+  <button
+    class="bg-slate-700 text-slate-100 w-full p-3 rounded-lg hover:bg-slate-800 cursor-pointer"
+    id="login-button"
+  >
+    <div class="flex justify-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-6"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25"
+        />
+      </svg>
+      <p>ログイン</p>
+    </div>
+  </button>
+  <div class="min-h-7 mt-2">
+    <p class="text-center text-sm hidden text-red-500" id="fail-message"></p>
+  </div>
+</div>
+<script>
+  $(document).ready(() => {
+    $("#login-button").click(() => {
+      const data = {
+        username: $("#username").val(),
+        password: $("#password").val(),
+      };
+      $.ajax({
+        url: "{% url 'do_login' %}",
+        method: "POST",
+        data: data,
+      }).done((response) => {
+        if (response.status === "success") {
+          location.href = response.redirect_url;
+        } else if (response.status === "fail") {
+          $("#fail-message").text(response.message);
+          $("#fail-message").fadeIn(100);
+          $("#password").val("");
+          $("#password, #username")
+            .removeClass(
+              "border-red-400 focus:border-red-500 focus:ring-red-300",
+            )
+            .addClass(
+              "border-slate-400 focus:border-slate-500 focus:ring-slate-300",
+            );
+          if (response.reason === "empty") {
+            for (let emptyField of response.empty_fields) {
+              $("#" + emptyField)
+                .removeClass(
+                  "border-slate-400 focus:border-slate-500 focus:ring-slate-300",
+                )
+                .addClass(
+                  "border-red-400 focus:border-red-500 focus:ring-red-300",
+                );
+            }
+          }
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}
