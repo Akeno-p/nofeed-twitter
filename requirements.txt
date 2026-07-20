@@ -4,6 +4,7 @@ charset-normalizer==3.4.9
 Django==5.2
 idna==3.18
 oauthlib==3.3.1
+pillow==12.3.0
 PyOTP==2.10.0
 python-dotenv==1.2.2
 qrcode==8.2
