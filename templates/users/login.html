@@ -85,7 +85,7 @@
 </div>
 <script>
   $(document).ready(() => {
-    $("#login-button").click(() => {
+    $("#login-button").on("click", () => {
       const data = {
         username: $("#username").val(),
         password: $("#password").val(),
