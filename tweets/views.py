@@ -1,3 +1,5 @@
 from django.shortcuts import render
 
-# Create your views here.
+
+def tweets_view(request):
+    return render(request, "tweets/tweets.html")
