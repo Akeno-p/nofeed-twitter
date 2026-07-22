@@ -140,7 +140,8 @@ def verify_two_factor_code(request):
     totp = pyotp.TOTP(interim_totp_secret)
 
     if totp.verify(two_factor_code):
-        user = Account.objects.get(id=request.session.get("pending_user_id"))
+        pending_user_id = request.session.get("pending_user_id")
+        user = Account.objects.get(id=pending_user_id)
         user.totp_secret = interim_totp_secret
         user.save(update_fields=["totp_secret"])
 
@@ -149,3 +150,21 @@ def verify_two_factor_code(request):
         return JsonResponse({"status": "success", "redirect_url": reverse("tweets")})
     else:
         return JsonResponse({"status": "fail", "message": "認証コードが一致しません。"})
+
+
+def totp_auth(request):
+    totp_auth_number = request.POST.get("totpAuthNumber")
+
+    pending_user_id = request.session.get("pending_user_id")
+    user = Account.objects.get(id=pending_user_id)
+    totp_secret = user.totp_secret
+
+    totp = pyotp.TOTP(totp_secret)
+
+    if totp.verify(totp_auth_number):
+        login(request, user)
+        return JsonResponse({"status": "success", "redirect_url": reverse("tweets")})
+    else:
+        return JsonResponse(
+            {"status": "fail", "message": "認証キーが正しくありません。"}
+        )

@@ -21,14 +21,14 @@
 </div>
 <input
   type="text"
-  id="two-factor-number"
+  id="totp-auth-number"
   class="p-2 text-center w-full border-2 rounded-lg border-slate-400 focus:border-slate-500 focus:ring-slate-300 focus:outline-none focus:ring-3"
   placeholder="123456"
 />
 <div>
   <button
     class="bg-slate-700 text-slate-100 w-full text-center rounded-lg p-3 hover:bg-slate-800 cursor-pointer"
-    id="auth-button"
+    id="totp-auth-button"
   >
     <div class="flex justify-center gap-2">
       <svg
@@ -48,10 +48,33 @@
       <p>認証</p>
     </div>
   </button>
+  <div class="min-h-7 mt-2">
+    <p class="text-center text-sm hidden text-red-500" id="fail-message"></p>
+  </div>
 </div>
 <script>
   $(document).ready(() => {
-    
+    $("#totp-auth-button").on("click", () => {
+      const totpAuthNumber = $("#totp-auth-number").val();
+      $.ajax({
+        url: "{% url 'totp_auth' %}",
+        method: "POST",
+        data: { totpAuthNumber: totpAuthNumber },
+      }).done((response) => {
+        if (response.status === "success") {
+          location.href = response.redirect_url;
+        } else if (response.status === "fail") {
+          $("#fail-message").text(response.message);
+          $("#fail-message").fadeIn(100);
+          $("#totp-auth-number")
+            .val("")
+            .removeClass(
+              "border-slate-400 focus:border-slate-500 focus:ring-slate-300",
+            )
+            .addClass("border-red-400 focus:border-red-500 focus:ring-red-300");
+        }
+      });
+    });
   });
 </script>
 {% endblock %}

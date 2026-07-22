@@ -11,4 +11,5 @@ urlpatterns = [
         views.verify_two_factor_code,
         name="verify_two_factor_code",
     ),
+    path("totp_auth/", views.totp_auth, name="totp_auth"),
 ]
