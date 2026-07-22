@@ -10,6 +10,10 @@ import base64
 
 
 def login_view(request):
+    is_login = request.user.is_authenticated
+    if is_login:
+        return redirect("tweets")
+
     return render(request, "users/login.html")
 
 
@@ -48,6 +52,8 @@ def do_login(request):
         )
 
     user = authenticate(request, username=username, password=password)
+
+    print(user.id)
 
     if user:
         request.session["pending_user_id"] = user.id
