@@ -154,6 +154,14 @@ def verify_two_factor_code(request):
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
 def two_factor_auth_view(request):
+    pending_user_id = request.session.get("pending_user_id")
+    totp_secret = (
+        Account.objects.filter(id=pending_user_id)
+        .values_list("totp_secret", flat=True)
+        .first()
+    )
+    if not totp_secret:
+        return redirect("two_factor_qrcode")
     return render(request, "users/two_factor_auth.html")
 
 
