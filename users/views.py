@@ -3,20 +3,19 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
 from django.urls import reverse
+from .decorators import redirect_to_tweets_if_logged_in
 import pyotp
 import qrcode
 import io
 import base64
 
 
+@redirect_to_tweets_if_logged_in
 def login_view(request):
-    is_login = request.user.is_authenticated
-    if is_login:
-        return redirect("tweets")
-
     return render(request, "users/login.html")
 
 
+@redirect_to_tweets_if_logged_in
 def do_login(request):
     username = request.POST.get("username")
     password = request.POST.get("password")
@@ -80,10 +79,13 @@ def do_login(request):
     )
 
 
+@redirect_to_tweets_if_logged_in
 def two_factor_auth_view(request):
+    # ログイン済みの場合 or まだpending_user_idがない状態でこれてほしくない。
     return render(request, "users/two_factor_auth.html")
 
 
+@redirect_to_tweets_if_logged_in
 def two_factor_qrcode_view(request):
     user_id = request.session.get("pending_user_id")
 
@@ -104,6 +106,7 @@ def two_factor_qrcode_view(request):
     )
 
 
+@redirect_to_tweets_if_logged_in
 def _setup_totp_secret(request):
     """秘密鍵の生成とQRコードの生成
 
@@ -135,6 +138,7 @@ def _setup_totp_secret(request):
     return qrcode_b64
 
 
+@redirect_to_tweets_if_logged_in
 def verify_two_factor_code(request):
     """入力された認証キーが正しいか確認
 
@@ -158,11 +162,13 @@ def verify_two_factor_code(request):
         return JsonResponse({"status": "fail", "message": "認証コードが一致しません。"})
 
 
+@redirect_to_tweets_if_logged_in
 def totp_auth(request):
     totp_auth_number = request.POST.get("totpAuthNumber")
 
     pending_user_id = request.session.get("pending_user_id")
     user = Account.objects.get(id=pending_user_id)
+
     totp_secret = user.totp_secret
 
     totp = pyotp.TOTP(totp_secret)
