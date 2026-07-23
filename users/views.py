@@ -2,6 +2,7 @@ from .models import Account
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.urls import reverse
 from .decorators import (
     redirect_to_tweets_if_logged_in,
@@ -18,6 +19,7 @@ def login_view(request):
     return render(request, "users/login.html")
 
 
+@require_POST
 @redirect_to_tweets_if_logged_in
 def do_login(request):
     username = request.POST.get("username")
@@ -54,8 +56,6 @@ def do_login(request):
         )
 
     user = authenticate(request, username=username, password=password)
-
-    print(user.id)
 
     if user:
         request.session["pending_user_id"] = user.id
@@ -125,6 +125,7 @@ def two_factor_qrcode_view(request):
     )
 
 
+@require_POST
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
 def verify_two_factor_code(request):
@@ -156,6 +157,7 @@ def two_factor_auth_view(request):
     return render(request, "users/two_factor_auth.html")
 
 
+@require_POST
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
 def totp_auth(request):
