@@ -12,4 +12,5 @@ urlpatterns = [
         name="verify_two_factor_code",
     ),
     path("totp_auth/", views.totp_auth, name="totp_auth"),
+    path("twitter_auth/", views.twitter_auth_view, name="twitter_auth"),
 ]

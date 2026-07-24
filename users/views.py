@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from .decorators import (
     redirect_to_tweets_if_logged_in,
@@ -87,14 +88,19 @@ def do_login(request):
 def two_factor_qrcode_view(request):
     user_id = request.session.get("pending_user_id")
 
-    totp_secret = (
-        Account.objects.filter(id=user_id).values_list("totp_secret", flat=True).first()
+    has_totp_secret = bool(
+        (
+            Account.objects.filter(id=user_id)
+            .values_list("totp_secret", flat=True)
+            .first()
+        )
     )
+    print(has_totp_secret)
 
-    # パスワードとユーザー名が流出した場合、ログイン後[users/verify_two_factor_code/]に
-    # 直接アクセスすることで、秘密鍵を再設定できてしまうのを防ぐため
-    if totp_secret:
-        return redirect("login")
+    # パスワードとユーザー名が流出した場合、login.htmlでパスワードとユーザー名を入力後
+    # [users/two_factor_qrcode/]に直接アクセスすることで、秘密鍵を再設定できてしまうのを防ぐため
+    if has_totp_secret:
+        return redirect("two_factor_auth")
 
     user_name = Account.objects.get(id=user_id).username
 
@@ -146,6 +152,11 @@ def verify_two_factor_code(request):
 
         login(request, user)
 
+        has_access_token = bool(user.access_token)
+        if not has_access_token:
+            return JsonResponse(
+                {"status": "success", "redirect_url": reverse("twitter_auth")}
+            )
         return JsonResponse({"status": "success", "redirect_url": reverse("tweets")})
     else:
         return JsonResponse({"status": "fail", "message": "認証コードが一致しません。"})
@@ -180,8 +191,19 @@ def totp_auth(request):
 
     if totp.verify(totp_auth_number):
         login(request, user)
+        has_access_token = bool(user.access_token)
+        if not has_access_token:
+            return JsonResponse(
+                {"status": "success", "redirect_url": reverse("twitter_auth")}
+            )
         return JsonResponse({"status": "success", "redirect_url": reverse("tweets")})
-    else:
-        return JsonResponse(
-            {"status": "fail", "message": "認証キーが正しくありません。"}
-        )
+
+    return JsonResponse({"status": "fail", "message": "認証キーが正しくありません。"})
+
+
+@login_required
+def twitter_auth_view(request):
+    has_access_token = bool(request.user.access_token)
+    if has_access_token:
+        return redirect("tweets")
+    return render(request, "users/twitter_auth.html")

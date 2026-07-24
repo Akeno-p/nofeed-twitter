@@ -133,3 +133,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # このプロジェクトの認証ユーザーモデル
 AUTH_USER_MODEL = "users.Account"
+
+# ログインされてないかったらloginページにリダイレクト
+LOGIN_URL = "login"
