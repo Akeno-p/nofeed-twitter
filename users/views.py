@@ -5,6 +5,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
+from urllib.parse import urlencode
+from django.conf import settings
 from .decorators import (
     redirect_to_tweets_if_logged_in,
     redirect_to_login_if_no_pending_user,
@@ -13,6 +15,8 @@ import pyotp
 import qrcode
 import io
 import base64
+import secrets
+import hashlib
 
 
 @redirect_to_tweets_if_logged_in
@@ -207,3 +211,77 @@ def twitter_auth_view(request):
     if has_access_token:
         return redirect("tweets")
     return render(request, "users/twitter_auth.html")
+
+
+@login_required
+@require_POST
+def twitter_auth_start(request):
+    # 文字数はcode_verifierが43~128指定 stateは指定なし
+    # token_urlsafeの引数は文字数ではなくバイト数なので(16)は16文字という意味ではない。
+    state = secrets.token_urlsafe(16)
+    code_verifier = secrets.token_urlsafe(64)
+
+    code_challenge = _sha256_base64url(code_verifier)
+
+    request.session["state"] = state
+    request.session["code_verifier"] = code_verifier
+
+    # 現状このアプリを使用するのは自分だけの想定なので、とりあえず全部の権限をとりあえず列挙している。
+    # アプリが完成したら不要だった権限は消していいかもしれない。
+    TWITTER_AUTH_ALL_SCOPE = (
+        "tweet.read "
+        "tweet.write "
+        "tweet.moderate.write "
+        "users.read "
+        "users.email "
+        "follows.read "
+        "follows.write "
+        "offline.access "
+        "space.read "
+        "mute.read "
+        "mute.write "
+        "like.read "
+        "like.write "
+        "list.read "
+        "list.write "
+        "block.read "
+        "block.write "
+        "bookmark.read "
+        "bookmark.write "
+        "dm.read dm.write "
+        "media.write"
+    )
+
+    TWITTER_AUTH_ENDPOINT = "https://x.com/i/oauth2/authorize"
+
+    params = {
+        "response_type": "code",
+        "client_id": settings.TWITTER_CLIENT_ID,
+        "redirect_uri": "http://localhost:8000/users/twitter_auth_redirect/",
+        "scope": TWITTER_AUTH_ALL_SCOPE,
+        "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
+    }
+
+    encoded_params = urlencode(params)
+
+    twitter_auth_url = TWITTER_AUTH_ENDPOINT + "?" + encoded_params
+
+    return JsonResponse({"redirect_url": twitter_auth_url})
+
+
+def _sha256_base64url(code_verifier):
+    """sha256のハッシュ値をbase64url形式に直した値を返す。"""
+
+    code_challenge = code_verifier.encode()
+    code_challenge = hashlib.sha256(code_challenge).digest()
+    code_challenge = base64.urlsafe_b64encode(code_challenge)
+    code_challenge = code_challenge.decode()
+    code_challenge = code_challenge.rstrip("=")
+
+    return code_challenge
+
+
+def twitter_auth_redirect():
+    print("ここがリダイレクトurlです。")

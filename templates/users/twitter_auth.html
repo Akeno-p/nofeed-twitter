@@ -45,4 +45,16 @@
     </div>
   </button>
 </div>
+<script>
+  $(document).ready(() => {
+    $("#twitter-auth-button").on("click", () => {
+      $.ajax({
+        url: "{% url 'twitter_auth_start' %}",
+        method: "POST",
+      }).done((response) => {
+        location.href = response.redirect_url;
+      });
+    });
+  });
+</script>
 {% endblock %}

@@ -13,4 +13,10 @@ urlpatterns = [
     ),
     path("totp_auth/", views.totp_auth, name="totp_auth"),
     path("twitter_auth/", views.twitter_auth_view, name="twitter_auth"),
+    path("twitter_auth_start/", views.twitter_auth_start, name="twitter_auth_start"),
+    path(
+        "twitter_auth_redirect/",
+        views.twitter_auth_redirect,
+        name="twitter_auth_redirect",
+    ),
 ]
