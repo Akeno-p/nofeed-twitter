@@ -136,3 +136,7 @@ AUTH_USER_MODEL = "users.Account"
 
 # ログインされてないかったらloginページにリダイレクト
 LOGIN_URL = "login"
+
+# Twitter(X)API 連携用のデータ
+TWITTER_CLIENT_ID = os.environ["TWITTER_CLIENT_ID"]
+TWITTER_CLIENT_SECRET = os.environ["TWITTER_CLIENT_SECRET"]
