@@ -130,3 +130,16 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# このプロジェクトの認証ユーザーモデル
+AUTH_USER_MODEL = "users.Account"
+
+# ログインされてないかったらloginページにリダイレクト
+LOGIN_URL = "login"
+
+# Twitter(X)API 連携用のデータ
+TWITTER_CLIENT_ID = os.environ["TWITTER_CLIENT_ID"]
+TWITTER_CLIENT_SECRET = os.environ["TWITTER_CLIENT_SECRET"]
+
+# Twitter(x)認証　リダイレクトuri
+TWITTER_REDIRECT_URI = os.environ["TWITTER_REDIRECT_URI"]

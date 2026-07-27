@@ -1,0 +1,60 @@
+{% extends 'base_auth.html' %}{% block auth_body %}
+<div class="self-center rounded-2xl bg-slate-200 p-2">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke-width="1.5"
+    stroke="currentColor"
+    class="size-10"
+  >
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"
+    />
+  </svg>
+</div>
+<div>
+  <h1 class="text-center text-2xl font-bold">Twitterと連携</h1>
+  <p class="text-center mt-1">
+    『連携』ボタンをクリックし、紐付けたいアカウントでログインしてください。
+  </p>
+</div>
+<div class="flex justify-center">
+  <button
+    class="bg-slate-700 text-slate-100 w-72 rounded-lg p-3 hover:bg-slate-800 cursor-pointer"
+    id="twitter-auth-button"
+  >
+    <div class="flex justify-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-6"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"
+        />
+      </svg>
+      <p class="text-xl">連携</p>
+    </div>
+  </button>
+</div>
+<script>
+  $(document).ready(() => {
+    $("#twitter-auth-button").on("click", () => {
+      $.ajax({
+        url: "{% url 'twitter_auth_start' %}",
+        method: "POST",
+      }).done((response) => {
+        location.href = response.redirect_url;
+      });
+    });
+  });
+</script>
+{% endblock %}
