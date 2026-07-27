@@ -257,7 +257,7 @@ def twitter_auth_start(request):
     params = {
         "response_type": "code",
         "client_id": settings.TWITTER_CLIENT_ID,
-        "redirect_uri": "http://localhost:8000/users/twitter_auth_redirect/",
+        "redirect_uri": settings.TWITTER_REDIRECT_URI,
         "scope": TWITTER_AUTH_ALL_SCOPE,
         "state": state,
         "code_challenge": code_challenge,

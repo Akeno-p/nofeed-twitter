@@ -140,3 +140,6 @@ LOGIN_URL = "login"
 # Twitter(X)API 連携用のデータ
 TWITTER_CLIENT_ID = os.environ["TWITTER_CLIENT_ID"]
 TWITTER_CLIENT_SECRET = os.environ["TWITTER_CLIENT_SECRET"]
+
+# Twitter(x)認証　リダイレクトuri
+TWITTER_REDIRECT_URI = os.environ["TWITTER_REDIRECT_URI"]
