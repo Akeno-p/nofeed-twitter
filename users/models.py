@@ -34,9 +34,6 @@ class Account(AbstractUser):
     refresh_token = models.TextField(
         blank=True, null=True, help_text="OAuth 2.0 リフレッシュトークン"
     )
-    access_token_expires_at = models.DateTimeField(
-        blank=True, null=True, help_text="アクセストークンの有効期限"
-    )
     totp_secret = models.TextField(
         blank=True,
         null=True,

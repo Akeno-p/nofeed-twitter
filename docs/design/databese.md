@@ -38,7 +38,6 @@ accounts{
     bigint user FK "userを参照"
     text access_token "OAuth 2.0 アクセストークン"
     text refresh_token "OAuth 2.0 リフレッシュトークン"
-    datetime access_token_expires_at "アクセストークンの有効期限"
     text totp_secret "nofeed-twitterの2段階認証用TOTP秘密鍵"
     varchar(150) username "nofeed-twitterのアカウント名(AbstractUserから継承)"
     varchar(128) password "nofeed-twitterのパスワード(AbstractUserから継承)"
