@@ -19,4 +19,7 @@ urlpatterns = [
         views.twitter_auth_redirect,
         name="twitter_auth_redirect",
     ),
+    path(
+        "twitter_auth_error/", views.twitter_auth_error_view, name="twitter_auth_error"
+    ),
 ]

@@ -1,9 +1,9 @@
 from .models import Account
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from urllib.parse import urlencode
 from django.conf import settings
@@ -17,6 +17,7 @@ import io
 import base64
 import secrets
 import hashlib
+import requests
 
 
 @redirect_to_tweets_if_logged_in
@@ -99,7 +100,6 @@ def two_factor_qrcode_view(request):
             .first()
         )
     )
-    print(has_totp_secret)
 
     # パスワードとユーザー名が流出した場合、login.htmlでパスワードとユーザー名を入力後
     # [users/two_factor_qrcode/]に直接アクセスすることで、秘密鍵を再設定できてしまうのを防ぐため
@@ -157,6 +157,7 @@ def verify_two_factor_code(request):
         login(request, user)
 
         has_access_token = bool(user.access_token)
+        
         if not has_access_token:
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
@@ -283,5 +284,53 @@ def _sha256_base64url(code_verifier):
     return code_challenge
 
 
-def twitter_auth_redirect():
-    print("ここがリダイレクトurlです。")
+@login_required
+def twitter_auth_redirect(request):
+    code = request.GET.get("code")
+    state = request.GET.get("state")
+
+    session_state = request.session.get("state")
+
+    if not state == session_state:
+        return redirect("twitter_auth_error")
+
+    TWITTER_TOKEN_ENDPOINT = "https://api.x.com/2/oauth2/token"
+
+    twitter_token_endpoint_data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": settings.TWITTER_REDIRECT_URI,
+        "client_id": settings.TWITTER_CLIENT_ID,
+        "code_verifier": request.session.get("code_verifier"),
+    }
+
+    TWITTER_CLIENT_CREDENTIALS = (
+        settings.TWITTER_CLIENT_ID,
+        settings.TWITTER_CLIENT_SECRET,
+    )
+
+    response = requests.post(
+        TWITTER_TOKEN_ENDPOINT,
+        data=twitter_token_endpoint_data,
+        auth=TWITTER_CLIENT_CREDENTIALS,
+    )
+
+    if not response.status_code == 200:
+        return redirect("twitter_auth_error")
+
+    token_data = response.json()
+
+    access_token = token_data.get("access_token")
+    refresh_token = token_data.get("refresh_token")
+
+    user_id = request.user.id
+
+    Account.objects.filter(id=user_id).update(
+        access_token=access_token, refresh_token=refresh_token
+    )
+
+    return redirect("tweets")
+
+
+def twitter_auth_error_view(request):
+    return render(request, "users/twitter_auth_error.html")
