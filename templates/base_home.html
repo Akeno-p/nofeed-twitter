@@ -2,9 +2,10 @@
 <div class="min-h-screen flex flex-row">
   <div class="w-80 border-r-2 border-slate-300 flex flex-col p-6">
     <p class="text-3xl font-bold text-slate-700 my-4">nofeed-twitter</p>
-    <div class="sidebar flex flex-col flex-1 gap-3 mt-4">
+    <div class="flex flex-col flex-1 gap-3 mt-4" id="sidebar">
       <div
         class="flex flex-row items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+        data-url="{% url 'tweets' %}"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -24,6 +25,7 @@
       </div>
       <div
         class="flex flex-row items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+        data-url="{% url 'reply' %}"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -43,6 +45,7 @@
       </div>
       <div
         class="flex flex-row items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+        data-url="{% url 'dm' %}"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -62,6 +65,7 @@
       </div>
       <div
         class="flex flex-row items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+        data-url="{% url 'api_usage' %}"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -81,7 +85,7 @@
       </div>
       <button
         class="bg-slate-700 text-slate-100 w-full rounded-lg p-3 my-4 hover:bg-slate-800 cursor-pointer"
-        id="two-factor-button"
+        id="tweet-button"
       >
         <div class="flex justify-center items-center gap-2">
           <svg
@@ -106,4 +110,16 @@
   </div>
   <div class="flex-1">{% block home_body %} {% endblock home_body %}</div>
 </div>
+<script>
+  $(document).ready(() => {
+    const pathName = location.pathname;
+    $(`#sidebar [data-url="${pathName}"]`)
+      .removeClass("text-slate-500")
+      .addClass("bg-slate-200 text-slate-700");
+
+    $("#sidebar [data-url]").on("click", function () {
+      location.href = $(this).data("url");
+    });
+  });
+</script>
 {% endblock content %}
