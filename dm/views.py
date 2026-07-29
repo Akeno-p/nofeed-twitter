@@ -1,3 +1,4 @@
 from django.shortcuts import render
 
-# Create your views here.
+def dm_view(request):
+    return render(request, "dm/dm.html")

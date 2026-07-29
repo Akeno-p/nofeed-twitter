@@ -1,3 +1,5 @@
 from django.shortcuts import render
 
-# Create your views here.
+
+def api_usage_view(request):
+    return render(request, "api_usage/api_usage.html")
