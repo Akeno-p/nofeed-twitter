@@ -116,7 +116,6 @@
     $(`#sidebar [data-url="${pathName}"]`)
       .removeClass("text-slate-500")
       .addClass("bg-slate-200 text-slate-700");
-
     $("#sidebar [data-url]").on("click", function () {
       location.href = $(this).data("url");
     });
