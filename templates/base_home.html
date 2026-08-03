@@ -233,7 +233,11 @@
         method: "POST",
         data: { tweetText: tweetText },
       }).done((response) => {
-        console.log(response.status);
+        if (response.status === "success") {
+          $("#tweet-modal")[0].close();
+        } else if (response.status === "error") {
+          alert(response.message);
+        }
       });
     });
   });
