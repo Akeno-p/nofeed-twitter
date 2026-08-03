@@ -85,7 +85,7 @@
       </div>
       <button
         class="bg-slate-700 text-slate-100 w-full rounded-lg p-3 my-4 hover:bg-slate-800 cursor-pointer"
-        id="direct-tweet-button"
+        id="open-tweet-modal-button"
       >
         <div class="flex justify-center items-center gap-2">
           <svg
@@ -141,14 +141,100 @@
   </div>
   <div class="flex-1">{% block home_body %} {% endblock home_body %}</div>
 </div>
+
+<!-- モーダル -->
+<dialog
+  class="m-auto border-2 border-slate-300 rounded-2xl w-3xl"
+  id="tweet-modal"
+>
+  <div class="flex flex-col p-2 bg-slate-50 text-slate-700">
+    <div>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-8 text-slate-500 hover:text-slate-700 cursor-pointer"
+        id="close-tweet-modal-button"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M6 18 18 6M6 6l12 12"
+        />
+      </svg>
+    </div>
+    <div class="flex p-2 mt-4">
+      <div>
+        <img
+          class="rounded-full"
+          src="{{ user.user.profile_image_url }}"
+          alt="アイコン"
+        />
+      </div>
+      <div class="p-2 my-1 flex-1 rounded-2xl">
+        <textarea
+          id="tweet-modal-text"
+          class="block text-xl min-h-[4lh] field-sizing-content resize-none focus:outline-none"
+          placeholder="なにしてる？"
+        ></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end">
+      <button
+        class="bg-slate-700 text-slate-100 w-38 rounded-lg p-2 hover:bg-slate-800 cursor-pointer"
+        id="tweet-modal-button"
+      >
+        <div class="flex justify-center items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+            />
+          </svg>
+          <p>ツイート</p>
+        </div>
+      </button>
+    </div>
+  </div>
+</dialog>
+
 <script>
   $(document).ready(() => {
+    // サイドバーの処理
     const pathName = location.pathname;
     $(`#sidebar [data-url="${pathName}"]`)
       .removeClass("text-slate-500")
       .addClass("bg-slate-200 text-slate-700");
     $("#sidebar [data-url]").on("click", function () {
       location.href = $(this).data("url");
+    });
+
+    // ツイートモーダルの処理
+    $("#open-tweet-modal-button").on("click", () => {
+      $("#tweet-modal")[0].showModal();
+    });
+    $("#close-tweet-modal-button").on("click", () => {
+      $("#tweet-modal")[0].close();
+    });
+    $("#tweet-modal-button").on("click", () => {
+      const tweetText = $("#tweet-modal-text").val();
+      $.ajax({
+        url: "{% url 'tweet' %}",
+        method: "POST",
+        data: { tweetText: tweetText },
+      }).done((response) => {
+        console.log(response.status);
+      });
     });
   });
 </script>
