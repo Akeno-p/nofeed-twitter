@@ -55,4 +55,98 @@
 <div class="border-y-2 border-slate-300">
   <p>ツイート情報を表示する</p>
 </div>
+
+<!-- モーダル -->
+<dialog
+  class="m-auto border-2 border-slate-300 rounded-2xl w-3xl"
+  id="tweet-confirm"
+>
+  <div class="flex flex-col p-8 bg-slate-50 text-slate-700 gap-7">
+    <div class="self-center rounded-2xl bg-slate-200 p-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-10"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+        />
+      </svg>
+    </div>
+    <h3 class="text-2xl font-bold text-center">ツイート文章</h3>
+    <div
+      class="p-2 my-1 self-center w-10/12 border border-slate-300 rounded-2xl"
+    >
+      <textarea
+        id="tweet-confirm-text"
+        class="block text-lg field-sizing-content resize-none focus:outline-none"
+        placeholder="なにしてる？"
+      ></textarea>
+    </div>
+    <div class="self-center flex gap-10">
+      <button
+        class="bg-slate-200 text-slate-600 w-44 rounded-lg p-3 ml-2 hover:bg-slate-300 cursor-pointer"
+        id="close-tweet-confirm"
+      >
+        <div class="flex justify-center items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18 18 6M6 6l12 12"
+            />
+          </svg>
+          <p>キャンセル</p>
+        </div>
+      </button>
+      <button
+        class="bg-slate-700 text-slate-100 w-44 rounded-lg p-3 ml-2 hover:bg-slate-800 cursor-pointer"
+        id="tweet-button"
+      >
+        <div class="flex justify-center items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+            />
+          </svg>
+          <p>ツイート</p>
+        </div>
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  $(document).ready(() => {
+    $("#tweet-button").on("click", () => {
+      const tweetInputVal = $("#tweet-input").val();
+      $("#tweet-confirm-text").val(tweetInputVal);
+      $("#tweet-confirm")[0].showModal();
+    });
+    $("#close-tweet-confirm").on("click", () => {
+      $("#tweet-confirm")[0].close();
+    });
+  });
+</script>
 {% endblock home_body %}
