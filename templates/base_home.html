@@ -208,6 +208,14 @@
   </div>
 </dialog>
 
+<!-- トースト -->
+<div
+  id="toast"
+  class="hidden text-slate-100 px-8 py-4 rounded-lg fixed bottom-8 left-1/2 -translate-x-1/2"
+>
+  <p id="toast-message" class="text-xl"></p>
+</div>
+
 <script>
   $(document).ready(() => {
     // サイドバーの処理
@@ -234,12 +242,31 @@
         data: { tweetText: tweetText },
       }).done((response) => {
         if (response.status === "success") {
+          showSuccessToast("ツイートしました");
           $("#tweet-modal")[0].close();
         } else if (response.status === "error") {
           alert(response.message);
         }
       });
     });
+
+    // トースト通知
+    let toastTimeoutId;
+    const showToast = (message, colorClass = "bg-slate-700") => {
+      $("#toast-message").text(message);
+      $("#toast")
+        .removeClass("bg-slate-700 bg-sky-600 bg-red-600")
+        .addClass(colorClass)
+        .fadeIn();
+
+      clearTimeout(toastTimeoutId);
+      toastTimeoutId = setTimeout(() => {
+        $("#toast").fadeOut();
+      }, 3000);
+    };
+
+    const showSuccessToast = (message) => showToast(message, "bg-sky-600");
+    const showErrorToast = (message) => showToast(message, "bg-red-600");
   });
 </script>
 {% endblock content %}
