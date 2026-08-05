@@ -226,47 +226,51 @@
     $("#sidebar [data-url]").on("click", function () {
       location.href = $(this).data("url");
     });
-
-    // ツイートモーダルの処理
-    $("#open-tweet-modal-button").on("click", () => {
-      $("#tweet-modal")[0].showModal();
-    });
-    $("#close-tweet-modal-button").on("click", () => {
-      $("#tweet-modal")[0].close();
-    });
-    $("#tweet-modal-button").on("click", () => {
-      const tweetText = $("#tweet-modal-text").val();
-      $.ajax({
-        url: "{% url 'tweet' %}",
-        method: "POST",
-        data: { tweetText: tweetText },
-      }).done((response) => {
-        if (response.status === "success") {
-          showSuccessToast("ツイートしました");
-          $("#tweet-modal")[0].close();
-        } else if (response.status === "error") {
-          alert(response.message);
-        }
-      });
-    });
-
-    // トースト通知
-    let toastTimeoutId;
-    const showToast = (message, colorClass = "bg-slate-700") => {
-      $("#toast-message").text(message);
-      $("#toast")
-        .removeClass("bg-slate-700 bg-sky-600 bg-red-600")
-        .addClass(colorClass)
-        .fadeIn();
-
-      clearTimeout(toastTimeoutId);
-      toastTimeoutId = setTimeout(() => {
-        $("#toast").fadeOut();
-      }, 3000);
-    };
-
-    const showSuccessToast = (message) => showToast(message, "bg-sky-600");
-    const showErrorToast = (message) => showToast(message, "bg-red-600");
   });
+  // ツイートモーダルの処理
+  $("#open-tweet-modal-button").on("click", () => {
+    $("#tweet-modal")[0].showModal();
+  });
+  $("#close-tweet-modal-button").on("click", () => {
+    $("#tweet-modal")[0].close();
+    $("#tweet-modal-text").val("");
+  });
+  $("#tweet-modal-button").on("click", () => {
+    const tweetText = $("#tweet-modal-text").val();
+    $.ajax({
+      url: "{% url 'tweet' %}",
+      method: "POST",
+      data: { tweetText: tweetText },
+    }).done((response) => {
+      if (response.status === "success") {
+        showSuccessToast("ツイートしました");
+        $("#tweet-modal")[0].close();
+        $("#tweet-modal-text").val("");
+      } else if (response.status === "error") {
+        alert("エラーコード" + response.error_code + "： " + response.message);
+      }
+    });
+  });
+</script>
+
+<script>
+  // 他ページからも呼ぶものは$(document).readyの外に出す
+  // トースト通知
+  let toastTimeoutId;
+  const showToast = (message, colorClass = "bg-slate-700") => {
+    $("#toast-message").text(message);
+    $("#toast")
+      .removeClass("bg-slate-700 bg-sky-600 bg-red-600")
+      .addClass(colorClass)
+      .fadeIn();
+
+    clearTimeout(toastTimeoutId);
+    toastTimeoutId = setTimeout(() => {
+      $("#toast").fadeOut();
+    }, 3000);
+  };
+
+  const showSuccessToast = (message) => showToast(message, "bg-sky-600");
+  const showErrorToast = (message) => showToast(message, "bg-red-600");
 </script>
 {% endblock content %}

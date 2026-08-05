@@ -13,7 +13,7 @@
     </div>
     <div class="flex-1 flex mt-2">
       <textarea
-        id="tweet-input"
+        id="tweet-text"
         class="flex-1 ml-4 border-b-2 border-slate-300 text-2xl field-sizing-content resize-none self-start focus:outline-none focus:border-slate-500"
         placeholder="なにしてる？"
       ></textarea>
@@ -56,14 +56,24 @@
   <p>ツイート情報を表示する</p>
 </div>
 
-
 <script>
   $(document).ready(() => {
-    $("#open-tweet-confirm-button").on("click", () => {
-      $("#tweet-confirm")[0].showModal();
-    });
-    $("#close-tweet-confirm-button").on("click", () => {
-      $("#tweet-confirm")[0].close();
+    $("#tweet-button").on("click", () => {
+      const tweetText = $("#tweet-text").val();
+      $.ajax({
+        url: "{% url 'tweet' %}",
+        method: "POST",
+        data: { tweetText: tweetText },
+      }).done((response) => {
+        if (response.status === "success") {
+          showSuccessToast("ツイートしました");
+          $("#tweet-text").val("");
+        } else if (response.status === "error") {
+          alert(
+            "エラーコード" + response.error_code + "： " + response.message,
+          );
+        }
+      });
     });
   });
 </script>

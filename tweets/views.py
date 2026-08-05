@@ -49,7 +49,11 @@ def tweet(request):
 
     if tweet_response.status_code != 201:
         return JsonResponse(
-            {"status": "error", "message": "想定外のエラーが発生しました。"}
+            {
+                "status": "error",
+                "message": "想定外のエラーが発生しました。",
+                "error_code": tweet_response.status_code,
+            }
         )
-    
+
     return JsonResponse({"status": "success"})
