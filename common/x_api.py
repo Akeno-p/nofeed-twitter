@@ -19,3 +19,4 @@ TWITTER_TOKEN_ENDPOINT = "https://api.x.com/2/oauth2/token"
 # APIエンドポイント
 TWITTER_USERS_ME_ENDPOINT = "https://api.x.com/2/users/me"
 TWITTER_TWEET_ENDPOINT = "https://api.x.com/2/tweets"
+TWITTER_USER_TWEETS_ENDPOINT = "https://api.x.com/2/users/{user_id}/tweets"
