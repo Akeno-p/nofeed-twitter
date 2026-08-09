@@ -52,3 +52,36 @@ def _update_tokens(request):
     request.user.refresh_from_db()
 
     return True
+
+
+def _request_with_token_refresh(request, send_request, success_code):
+    """リクエストを実行し、401 の場合はトークンを更新して再実行する。
+
+    send_request には引数なしで呼べるリクエスト関数を、
+    success_code には成功とみなす status_code を渡す。
+
+    (status, 値) のタプルを返す。
+    成功時は ("success", response)、
+    失敗時は ("error", エラー内容の辞書) を返す。
+    """
+    response = send_request()
+
+    if response.status_code == 401:
+        if not _update_tokens(request):
+            return "error", {
+                "status": "error",
+                "message": "アクセストークンの更新に失敗しました。",
+                "error_code": response.status_code,
+            }
+
+        response = send_request()
+    print(response.status_code)
+
+    if response.status_code != success_code:
+        return "error", {
+            "status": "error",
+            "message": "想定外のエラーが発生しました。",
+            "error_code": response.status_code,
+        }
+
+    return "success", response
