@@ -48,13 +48,27 @@
     </button>
   </div>
 </div>
-<div class="flex justify-between px-4">
+<div class="flex justify-between px-4 pb-2 border-b-2 border-slate-300">
   <p class="text-slate-500 text-lg">自分のツイート</p>
   <p class="text-slate-400">新しい順</p>
 </div>
-<div class="border-y-2 border-slate-300">
-  <p>ツイート情報を表示する</p>
+
+{% for tweet in my_tweets %}
+<div class="border-b-2 border-slate-200 px-5 py-4 flex">
+  <div>
+    <img class="rounded-full" src="{{ tweet.author.profile_image_url }}" />
+  </div>
+  <div class="pl-4">
+    <div class="flex gap-2 items-center">
+      <p class="font-semibold text-lg">{{ tweet.author.name }}</p>
+      <p class="font-light text-slate-500">@{{ tweet.author.username }}</p>
+      <p class="font-light text-slate-500">・{{ tweet.display_created_at }}</p>
+      
+    </div>
+    <p class="my-1 text-lg">{{ tweet.text }}</p>
+  </div>
 </div>
+{% endfor %}
 
 <script>
   $(document).ready(() => {

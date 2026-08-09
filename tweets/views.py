@@ -2,6 +2,7 @@ import requests
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 
 from common.utils import _update_tokens
 from common.x_api import TWITTER_TWEET_ENDPOINT, TWITTER_USER_TWEETS_ENDPOINT
@@ -10,10 +11,44 @@ from tweets.models import Tweet
 
 @login_required
 def tweets_view(request):
-    return render(
-        request,
-        "tweets/tweets.html",
+    my_tweets = list(
+        Tweet.objects.filter(author=request.user.user_id)
+        .select_related("author")
+        .order_by("-created_at")
     )
+
+    now = timezone.localtime()
+    now_date = now.strftime("%Y年%m月%d日")
+    now_year = now.strftime("%Y年")
+
+    for tweet in my_tweets:
+        local_created = timezone.localtime(tweet.created_at)
+        created_date = local_created.strftime("%Y年%m月%d日")
+        created_year = local_created.strftime("%Y年")
+
+        if now_date == created_date:
+            diff_time = now - local_created
+            diff_total_seconds = diff_time.total_seconds()
+            diff_hours = int(diff_total_seconds // 3600)
+            diff_minutes = int(diff_total_seconds % 3600 // 60)
+
+            if diff_hours == 0:
+                relative_time = f"{diff_minutes}分"
+            else:
+                relative_time = f"{diff_hours}時間"
+            tweet.display_created_at = relative_time
+
+            continue
+
+        if now_year == created_year:
+            # strftimeを使用すると08月02日のように0埋めになってしまうため
+            month_day = f"{local_created.month}月{local_created.day}日"
+            tweet.display_created_at = month_day
+            continue
+
+        tweet.display_created_at = created_date
+
+    return render(request, "tweets/tweets.html", {"my_tweets": my_tweets})
 
 
 @login_required
