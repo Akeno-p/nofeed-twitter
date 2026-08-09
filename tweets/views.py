@@ -5,7 +5,11 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from common.utils import _update_tokens
-from common.x_api import TWITTER_TWEET_ENDPOINT, TWITTER_USER_TWEETS_ENDPOINT
+from common.x_api import (
+    TWITTER_GET_TWEET_ENDPOINT,
+    TWITTER_TWEET_ENDPOINT,
+    TWITTER_USER_TWEETS_ENDPOINT,
+)
 from tweets.models import Tweet
 
 
@@ -96,7 +100,70 @@ def tweet(request):
             }
         )
 
+    tweet_id = tweet_response.json().get("data").get("id")
+
+    get_tweet_response = _get_tweet(request, tweet_id)
+
+    if get_tweet_response.status_code == 401:
+        is_update_tokens = _update_tokens(request)
+
+        if not is_update_tokens:
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "アクセストークンの更新に失敗しました。",
+                    "error_code": get_tweet_response.status_code,
+                }
+            )
+
+        get_tweet_response = _get_tweet(request, tweet_id)
+
+        if get_tweet_response.status_code != 200:
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "想定外のエラーが発生しました。",
+                    "error_code": get_tweet_response.status_code,
+                }
+            )
+
+    created_tweet = get_tweet_response.json().get("data")
+
+    in_reply_to_tweet_id = None
+    in_quoted_to_tweet_id = None
+
+    tweet_type = created_tweet.get("type")
+
+    if tweet_type == "quoted":
+        in_quoted_to_tweet_id = created_tweet.get("id")
+    elif tweet_type == "replied_to":
+        in_reply_to_tweet_id = created_tweet.get("id")
+
+    tweet = Tweet(
+        id=created_tweet.get("id"),
+        author_id=created_tweet.get("author_id"),
+        text=created_tweet.get("text"),
+        created_at=created_tweet.get("created_at"),
+        conversation_id=created_tweet.get("conversation_id"),
+        in_reply_to_tweet_id=in_reply_to_tweet_id,
+        in_quoted_to_tweet_id=in_quoted_to_tweet_id,
+    )
+
+    tweet.save()
+
     return JsonResponse({"status": "success"})
+
+
+def _get_tweet(request, tweet_id):
+    get_tweet_response = requests.get(
+        TWITTER_GET_TWEET_ENDPOINT.format(tweet_id=tweet_id),
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        params={
+            "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+        },
+    )
+
+    return get_tweet_response
 
 
 @login_required

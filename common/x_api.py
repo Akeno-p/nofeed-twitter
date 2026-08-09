@@ -5,18 +5,32 @@ X APIを使用するための定数やエンドポイントURLをまとめたモ
 
 import os
 
-# OAuth クライアント認証情報
+# ====== OAuth クライアント認証情報 =====
+
 TWITTER_CLIENT_ID = os.environ["TWITTER_CLIENT_ID"]
 TWITTER_CLIENT_SECRET = os.environ["TWITTER_CLIENT_SECRET"]
 
-# リダイレクトuri
+
+# ===== リダイレクトuri =====
+
 TWITTER_REDIRECT_URI = os.environ["TWITTER_REDIRECT_URI"]
 
-# OAuth エンドポイント
+
+# ===== OAuth エンドポイント =====
+
+# GET：認証画面の表示
 TWITTER_AUTH_ENDPOINT = "https://x.com/i/oauth2/authorize"
+# POST：トークンの取得
 TWITTER_TOKEN_ENDPOINT = "https://api.x.com/2/oauth2/token"
 
-# APIエンドポイント
+
+# ===== APIエンドポイント =====
+
+# GET：自分のユーザー情報
 TWITTER_USERS_ME_ENDPOINT = "https://api.x.com/2/users/me"
+# POST：ツイート投稿
 TWITTER_TWEET_ENDPOINT = "https://api.x.com/2/tweets"
+# GET：ツイート単体取得
+TWITTER_GET_TWEET_ENDPOINT = "https://api.x.com/2/tweets/{tweet_id}"
+# GET：ユーザーのツイート一覧取得
 TWITTER_USER_TWEETS_ENDPOINT = "https://api.x.com/2/users/{user_id}/tweets"
