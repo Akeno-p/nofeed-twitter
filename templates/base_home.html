@@ -324,6 +324,10 @@
     });
     $("#tweet-modal-button").on("click", () => {
       const tweetText = $("#tweet-modal-text").val();
+      if (tweetText === "") {
+        showToast("ツイートの文章を入力してください。");
+        return;
+      }
       $.ajax({
         url: "{% url 'tweet' %}",
         method: "POST",
