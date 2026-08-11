@@ -75,7 +75,6 @@ def _request_with_token_refresh(request, send_request, success_code):
             }
 
         response = send_request()
-    print(response.status_code)
 
     if response.status_code != success_code:
         return "error", {

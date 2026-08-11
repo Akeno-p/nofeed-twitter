@@ -2,6 +2,7 @@ import requests
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from common.utils import _request_with_token_refresh
@@ -21,38 +22,47 @@ def tweets_view(request):
         .order_by("-created_at")
     )
 
+    for tweet in my_tweets:
+        _set_display_created_at(tweet)
+
+    return render(request, "tweets/tweets.html", {"my_tweets": my_tweets})
+
+
+def _set_display_created_at(tweet):
+    """ツイートに、一覧表示用の作成日時を display_created_at としてセットする。
+
+    表示形式は投稿日時によって変わる。
+    当日は「3分」「5時間」、同じ年は「8月2日」、それ以外は「2025年8月2日」。
+
+    戻り値はなく、渡された tweet を直接書き換える。
+    """
     now = timezone.localtime()
     now_date = now.strftime("%Y年%m月%d日")
     now_year = now.strftime("%Y年")
+    local_created = timezone.localtime(tweet.created_at)
+    created_date = local_created.strftime("%Y年%m月%d日")
+    created_year = local_created.strftime("%Y年")
 
-    for tweet in my_tweets:
-        local_created = timezone.localtime(tweet.created_at)
-        created_date = local_created.strftime("%Y年%m月%d日")
-        created_year = local_created.strftime("%Y年")
+    if now_date == created_date:
+        diff_time = now - local_created
+        diff_total_seconds = diff_time.total_seconds()
+        diff_hours = int(diff_total_seconds // 3600)
+        diff_minutes = int(diff_total_seconds % 3600 // 60)
 
-        if now_date == created_date:
-            diff_time = now - local_created
-            diff_total_seconds = diff_time.total_seconds()
-            diff_hours = int(diff_total_seconds // 3600)
-            diff_minutes = int(diff_total_seconds % 3600 // 60)
+        if diff_hours == 0:
+            relative_time = f"{diff_minutes}分"
+        else:
+            relative_time = f"{diff_hours}時間"
+        tweet.display_created_at = relative_time
+        return
 
-            if diff_hours == 0:
-                relative_time = f"{diff_minutes}分"
-            else:
-                relative_time = f"{diff_hours}時間"
-            tweet.display_created_at = relative_time
+    if now_year == created_year:
+        # strftimeを使用すると08月02日のように0埋めになってしまうため
+        month_day = f"{local_created.month}月{local_created.day}日"
+        tweet.display_created_at = month_day
+        return
 
-            continue
-
-        if now_year == created_year:
-            # strftimeを使用すると08月02日のように0埋めになってしまうため
-            month_day = f"{local_created.month}月{local_created.day}日"
-            tweet.display_created_at = month_day
-            continue
-
-        tweet.display_created_at = created_date
-
-    return render(request, "tweets/tweets.html", {"my_tweets": my_tweets})
+    tweet.display_created_at = created_date
 
 
 @login_required
@@ -126,7 +136,14 @@ def tweet(request):
 
     tweet.save()
 
-    return JsonResponse({"status": "success"})
+    # tweetのcreated_atをstrからdatetimeに更新するため
+    tweet.refresh_from_db()
+
+    _set_display_created_at(tweet)
+
+    html = render_to_string("tweets/_tweets.html", {"tweet": tweet})
+
+    return JsonResponse({"status": "success", "html": html})
 
 
 @login_required
