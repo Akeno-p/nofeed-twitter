@@ -201,8 +201,15 @@
       </div>
     </div>
     <div class="flex justify-end">
+      <div
+        id="tweet-modal-char-counter"
+        class="flex items-center text-slate-400"
+      >
+        <p id="tweet-modal-char-count">0</p>
+        <p>/140</p>
+      </div>
       <button
-        class="bg-slate-700 text-slate-100 w-38 rounded-lg p-2 hover:bg-slate-800 cursor-pointer"
+        class="bg-slate-700 text-slate-100 w-38 rounded-lg ml-2 p-2 hover:bg-slate-800 cursor-pointer"
         id="tweet-modal-button"
       >
         <div class="flex justify-center items-center gap-2">
@@ -322,6 +329,17 @@
       $("#tweet-modal")[0].close();
       $("#tweet-modal-text").val("");
     });
+    $("#tweet-modal-text").on("input", () => {
+      let tweetModalCharCount = $("#tweet-modal-text").val().length;
+      $("#tweet-modal-char-count").text(tweetModalCharCount);
+      if (tweetModalCharCount > 140) {
+        $("#tweet-modal-char-counter").removeClass("text-slate-400");
+        $("#tweet-modal-char-counter").addClass("text-red-400");
+      } else {
+        $("#tweet-modal-char-counter").removeClass("text-red-400");
+        $("#tweet-modal-char-counter").addClass("text-slate-400");
+      }
+    });
     $("#tweet-modal-button").on("click", () => {
       const tweetText = $("#tweet-modal-text").val();
       if (tweetText === "") {
@@ -337,6 +355,7 @@
           showSuccessToast("ツイートしました");
           $("#tweet-modal")[0].close();
           $("#tweet-modal-text").val("");
+          $("#tweet-list").prepend(response.html);
         } else if (response.status === "error") {
           alert(
             "エラーコード" + response.error_code + "： " + response.message,

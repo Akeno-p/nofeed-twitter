@@ -21,9 +21,9 @@
       </div>
     </div>
     <div class="flex justify-end mt-3">
-      <div class="flex items-center text-slate-400">
-        <p id="input-count">0</p>
-        <p>/280</p>
+      <div id="char-counter" class="flex items-center text-slate-400">
+        <p id="char-count">0</p>
+        <p>/140</p>
       </div>
       <button
         class="bg-slate-700 text-slate-100 w-44 rounded-lg p-3 ml-2 hover:bg-slate-800 cursor-pointer"
@@ -62,8 +62,13 @@
   $(document).ready(() => {
     $("#tweet-button").on("click", () => {
       const tweetText = $("#tweet-text").val();
+      console.log(tweetText.length);
       if (tweetText === "") {
         showToast("ツイートの文章を入力してください。");
+        return;
+      }
+      if (tweetText.length > 140) {
+        showToast("ツイートの文字数は140文字以内で入力してください");
         return;
       }
       $.ajax({
@@ -81,6 +86,18 @@
           );
         }
       });
+    });
+    $("#tweet-text").on("input", () => {
+      let charCount = $("#tweet-text").val().length;
+      $("#char-count").text(charCount);
+      if (charCount > 140) {
+        console.log("140超えた");
+        $("#char-counter").removeClass("text-slate-400");
+        $("#char-counter").addClass("text-red-400");
+      } else {
+        $("#char-counter").removeClass("text-red-400");
+        $("#char-counter").addClass("text-slate-400");
+      }
     });
   });
 </script>
