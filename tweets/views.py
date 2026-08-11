@@ -149,7 +149,7 @@ def tweet(request):
 @login_required
 def save_all_tweets(request):
 
-    def get_all_tweets(request):
+    def get_all_tweets():
         all_tweets_response = requests.get(
             TWITTER_USER_TWEETS_ENDPOINT.format(user_id=request.user.user.id),
             headers={"Authorization": f"Bearer {request.user.access_token}"},
