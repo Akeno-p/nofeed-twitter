@@ -167,6 +167,15 @@
     $("[data-reply-button]").on("click", function () {
       const replyId = $(this).data("reply-button");
       const replyText = $(`[data-reply-text=${replyId}]`).val();
+      if (replyText.length > 140) {
+        showToast("ツイートの文字数は140文字以内で入力してください");
+        return;
+      }
+      if (replyText == "") {
+        showToast("ツイートの文章を入力してください。");
+        return;
+      }
+
       $.ajax({
         url: "{% url 'reply' %}",
         method: "POST",
