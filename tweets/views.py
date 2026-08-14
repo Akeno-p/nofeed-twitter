@@ -17,7 +17,9 @@ from tweets.models import Tweet
 @login_required
 def tweets_view(request):
     my_tweets = list(
-        Tweet.objects.filter(author=request.user.user_id)
+        Tweet.objects.filter(
+            author=request.user.user_id, in_reply_to_tweet_id__isnull=True
+        )
         .select_related("author")
         .order_by("-created_at")
     )
@@ -67,10 +69,28 @@ def _set_display_created_at(tweet):
 
 @login_required
 def reply_view(request):
-    return render(
-        request,
-        "tweets/reply.html",
+    my_tweets = list(
+        Tweet.objects.filter(
+            author=request.user.user_id,
+            in_reply_to_tweet_id__isnull=True,
+        ).order_by("-created_at")
     )
+
+    tweet_ids = [tweet.id for tweet in my_tweets]
+
+    replies = list(
+        Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
+        .select_related("author")
+        .order_by("-created_at")
+    )
+
+    for reply in replies:
+        _set_display_created_at(reply)
+
+        in_reply_to_text = Tweet.objects.get(id=reply.in_reply_to_tweet_id).text
+        reply.in_reply_to_text = in_reply_to_text
+
+    return render(request, "tweets/reply.html", {"replies": replies})
 
 
 @login_required
