@@ -252,3 +252,7 @@ def reply(request):
         return JsonResponse(reply_result)
 
     return JsonResponse({"status": "success"})
+
+
+def save_replies(request):
+    pass

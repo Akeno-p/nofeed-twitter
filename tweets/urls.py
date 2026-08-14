@@ -8,4 +8,5 @@ urlpatterns = [
     path("tweet", views.tweet, name="tweet"),
     path("save_all_tweets", views.save_all_tweets, name="save_all_tweets"),
     path("reply", views.reply, name="reply"),
+    path("save_replies", views.save_replies, name="save_replies"),
 ]
