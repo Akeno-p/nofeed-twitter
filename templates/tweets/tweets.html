@@ -69,10 +69,12 @@
         showToast("ツイートの文章を入力してください。");
         return;
       }
+
       if (tweetText.length > 140) {
         showToast("ツイートの文字数は140文字以内で入力してください");
         return;
       }
+
       $.ajax({
         url: "{% url 'tweet' %}",
         method: "POST",
@@ -89,6 +91,7 @@
         }
       });
     });
+
     $("#tweet-text").on("input", () => {
       let charCount = $("#tweet-text").val().length;
       $("#char-count").text(charCount);

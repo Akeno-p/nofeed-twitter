@@ -168,9 +168,17 @@
       const replyId = $(this).data("reply-button");
       const replyText = $(`[data-reply-text=${replyId}]`).val();
       $.ajax({
-        url: "{}",
+        url: "{% url 'reply' %}",
         method: "POST",
-        data: { replyText: replyText },
+        data: { replyText: replyText, replyId: replyId },
+      }).done((response) => {
+        if (response.status === "success") {
+          showSuccessToast("成功しました");
+        } else if (response.status === "error") {
+          alert(
+            "エラーコード" + response.error_code + "： " + response.message,
+          );
+        }
       });
     });
   });

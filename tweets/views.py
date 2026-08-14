@@ -228,3 +228,27 @@ def replies_view(request):
 
     return render(request, "tweets/replies.html", {"replies": replies})
 
+
+def reply(request):
+    reply_text = request.POST.get("replyText")
+    in_reply_to_tweet_id = request.POST.get("replyId")
+
+    def reply_request():
+        reply_response = requests.post(
+            TWITTER_TWEET_ENDPOINT,
+            headers={"Authorization": f"Bearer {request.user.access_token}"},
+            json={
+                "text": reply_text,
+                "reply": {"in_reply_to_tweet_id": in_reply_to_tweet_id},
+            },
+        )
+        return reply_response
+
+    reply_status, reply_result = _request_with_token_refresh(
+        request, reply_request, 201
+    )
+
+    if reply_status == "error":
+        return JsonResponse(reply_result)
+
+    return JsonResponse({"status": "success"})
