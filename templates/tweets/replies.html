@@ -80,7 +80,7 @@
         <!-- 送信ボタン -->
         <button
           class="bg-slate-700 text-slate-100 w-32 rounded-lg ml-2 p-2 hover:bg-slate-800 cursor-pointer"
-          id="reply-button"
+          data-reply-button="{{reply.id}}"
         >
           <div class="flex justify-center items-center gap-2">
             <svg
@@ -146,9 +146,11 @@
       const tweetText = $(this).data("in-reply-to-text");
       $("#tweet-text").text(tweetText);
     });
+
     $("#close-in-reply-to-text-modal-button").on("click", () => {
       $("#in-reply-to-text-modal")[0].close();
     });
+
     $("[data-reply-text]").on("input", function () {
       const replyId = $(this).data("reply-text");
       const charCount = $(this).val().length;
@@ -160,6 +162,16 @@
         $(`[data-reply-char-counter=${replyId}]`).addClass("text-slate-400");
         $(`[data-reply-char-counter=${replyId}]`).removeClass("text-red-400");
       }
+    });
+
+    $("[data-reply-button]").on("click", function () {
+      const replyId = $(this).data("reply-button");
+      const replyText = $(`[data-reply-text=${replyId}]`).val();
+      $.ajax({
+        url: "{}",
+        method: "POST",
+        data: { replyText: replyText },
+      });
     });
   });
 </script>
