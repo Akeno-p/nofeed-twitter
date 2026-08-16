@@ -219,6 +219,13 @@ def replies_view(request):
         ).order_by("-created_at")
     )
 
+    my_replies = list(
+        Tweet.objects.filter(
+            author=request.user.user_id,
+            in_reply_to_tweet_id__isnull=False,
+        ).order_by("-created_at")
+    )
+
     tweet_ids = [tweet.id for tweet in my_tweets]
 
     replies = list(
@@ -229,10 +236,17 @@ def replies_view(request):
     )
 
     tweets_by_id = {tweet.id: tweet for tweet in my_tweets}
+    my_reply_by_parent_tweet_id = {
+        tweet.in_reply_to_tweet_id: tweet for tweet in my_replies
+    }
 
     for reply in replies:
         _set_display_created_at(reply)
         reply.in_reply_to_tweet_text = tweets_by_id[reply.in_reply_to_tweet_id].text
+
+        my_reply_to_reply = my_reply_by_parent_tweet_id.get(reply.id)
+        if my_reply_to_reply:
+            reply.my_reply_text = my_reply_to_reply.text
 
     return render(request, "tweets/replies.html", {"replies": replies})
 

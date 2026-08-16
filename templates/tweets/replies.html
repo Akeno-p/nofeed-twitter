@@ -55,54 +55,62 @@
           <p class="my-1 text-lg">{{ reply.text }}</p>
         </div>
       </div>
-
+      <!-- リプライへの返信 -->
+      {% if reply.my_reply_text %}
+      <div>
+        <p>{{ reply.my_reply_text }}</p>
+      </div>
       <!-- リプライ入力欄 -->
-      <div class="flex ml-18">
-        <img
-          class="rounded-full h-10 mr-3"
-          src="{{ user.user.profile_image_url }}"
-        />
-        <textarea
-          rows="1"
-          data-reply-text="{{reply.id}}"
-          class="text-lg p-2 w-full border-2 rounded-lg resize-none field-sizing-content border-slate-400 focus:border-slate-500 focus:ring-slate-300 focus:outline-none focus:ring-3"
-          placeholder="@{{reply.author.username}}に対しての返信を入力..."
-        ></textarea>
-      </div>
-
-      <div class="flex justify-end mt-2">
-        <!-- 入力数カウンター -->
-        <div
-          data-reply-char-counter="{{reply.id}}"
-          class="flex items-center text-slate-400"
-        >
-          <p data-reply-char-count="{{reply.id}}">0</p>
-          <p>/140</p>
+      {% else %}
+      <div>
+        <div class="flex ml-18">
+          <img
+            class="rounded-full h-10 mr-3"
+            src="{{ user.user.profile_image_url }}"
+          />
+          <textarea
+            rows="1"
+            data-reply-text="{{reply.id}}"
+            class="text-lg p-2 w-full border-2 rounded-lg resize-none field-sizing-content border-slate-400 focus:border-slate-500 focus:ring-slate-300 focus:outline-none focus:ring-3"
+            placeholder="@{{reply.author.username}}に対しての返信を入力..."
+          ></textarea>
         </div>
-        <!-- 送信ボタン -->
-        <button
-          class="bg-slate-700 text-slate-100 w-32 rounded-lg ml-2 p-2 hover:bg-slate-800 cursor-pointer"
-          data-reply-button="{{reply.id}}"
-        >
-          <div class="flex justify-center items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
-              />
-            </svg>
-            <p>返信</p>
+
+        <div class="flex justify-end mt-2">
+          <!-- 入力数カウンター -->
+          <div
+            data-reply-char-counter="{{reply.id}}"
+            class="flex items-center text-slate-400"
+          >
+            <p data-reply-char-count="{{reply.id}}">0</p>
+            <p>/140</p>
           </div>
-        </button>
+          <!-- 送信ボタン -->
+          <button
+            class="bg-slate-700 text-slate-100 w-32 rounded-lg ml-2 p-2 hover:bg-slate-800 cursor-pointer"
+            data-reply-button="{{reply.id}}"
+          >
+            <div class="flex justify-center items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="size-6"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+                />
+              </svg>
+              <p>返信</p>
+            </div>
+          </button>
+        </div>
       </div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
