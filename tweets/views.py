@@ -223,15 +223,16 @@ def replies_view(request):
 
     replies = list(
         Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
+        .exclude(author=request.user.user_id)
         .select_related("author")
         .order_by("-created_at")
     )
 
+    tweets_by_id = {tweet.id: tweet for tweet in my_tweets}
+
     for reply in replies:
         _set_display_created_at(reply)
-
-        in_reply_to_text = Tweet.objects.get(id=reply.in_reply_to_tweet_id).text
-        reply.in_reply_to_text = in_reply_to_text
+        reply.in_reply_to_tweet_text = tweets_by_id[reply.in_reply_to_tweet_id].text
 
     return render(request, "tweets/replies.html", {"replies": replies})
 

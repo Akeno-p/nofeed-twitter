@@ -11,7 +11,7 @@
     <div class="px-4 py-4 border-b-2 border-slate-200">
       <div
         class="inline-flex items-center text-slate-500 hover:text-slate-500 hover:border-b border-slate-400 cursor-pointer"
-        data-in-reply-to-text="{{reply.in_reply_to_text}}"
+        data-in-reply-to-text="{{reply.in_reply_to_tweet_text}}"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -30,7 +30,7 @@
         <p>
           あなたのツイート
           <!-- prettier-ignore -->
-          「 {{ reply.in_reply_to_text|truncatechars:21}} 」
+          「 {{ reply.in_reply_to_tweet_text|truncatechars:21}} 」
           に対しての返信
         </p>
       </div>
@@ -55,6 +55,7 @@
           <p class="my-1 text-lg">{{ reply.text }}</p>
         </div>
       </div>
+
       <!-- リプライ入力欄 -->
       <div class="flex ml-18">
         <img
@@ -68,6 +69,7 @@
           placeholder="@{{reply.author.username}}に対しての返信を入力..."
         ></textarea>
       </div>
+
       <div class="flex justify-end mt-2">
         <!-- 入力数カウンター -->
         <div
