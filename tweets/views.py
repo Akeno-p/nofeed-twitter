@@ -1,3 +1,5 @@
+import re
+
 import requests
 from django.contrib.auth.decorators import login_required
 from django.db.models import Max
@@ -241,14 +243,32 @@ def replies_view(request):
     }
 
     for reply in replies:
+        reply.text = _strip_leading_mentions(reply.text)
+
         _set_display_created_at(reply)
-        reply.in_reply_to_tweet_text = tweets_by_id[reply.in_reply_to_tweet_id].text
+        reply.in_reply_to_tweet_text = _strip_leading_mentions(
+            tweets_by_id[reply.in_reply_to_tweet_id].text
+        )
 
         my_reply_to_reply = my_reply_by_parent_tweet_id.get(reply.id)
         if my_reply_to_reply:
-            reply.my_reply_text = my_reply_to_reply.text
+            _set_display_created_at(my_reply_to_reply)
+            reply.my_reply_to_reply = my_reply_to_reply
+            reply.my_reply_to_reply.display_text = _strip_leading_mentions(
+                reply.my_reply_to_reply.text
+            )
 
     return render(request, "tweets/replies.html", {"replies": replies})
+
+
+def _strip_leading_mentions(text):
+    """replyのテキストのusernameを除去する。
+
+    例
+    変換前 (@username リプライです。)
+    変換後 (リプライです。)
+    """
+    return re.sub(r"^@\w+\s+", "", text)
 
 
 def reply(request):
@@ -354,8 +374,6 @@ def save_replies(request):
 
         if save_users_status == "error":
             return JsonResponse(save_users_result)
-
-    print(replies_list)
 
     Tweet.objects.bulk_create(replies_list)
 

@@ -56,9 +56,30 @@
         </div>
       </div>
       <!-- リプライへの返信 -->
-      {% if reply.my_reply_text %}
-      <div>
-        <p>{{ reply.my_reply_text }}</p>
+      {% if reply.my_reply_to_reply %}
+      <div class="flex items-center ml-18">
+        <div class="flex">
+          <div>
+            <img
+              class="rounded-full h-10 mr-3"
+              src="{{ reply.my_reply_to_reply.author.profile_image_url }}"
+            />
+          </div>
+          <div>
+            <div class="flex gap-2 items-center">
+              <p class="font-semibold text-lg">
+                {{ reply.my_reply_to_reply.author.name }}
+              </p>
+              <p class="font-light text-slate-500">
+                @{{ reply.my_reply_to_reply.author.username }}
+              </p>
+              <p class="font-light text-slate-500">
+                ・{{ reply.my_reply_to_reply.display_created_at }}
+              </p>
+            </div>
+            <p class="text-lg">{{ reply.my_reply_to_reply.display_text }}</p>
+          </div>
+        </div>
       </div>
       <!-- リプライ入力欄 -->
       {% else %}
