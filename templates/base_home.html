@@ -425,7 +425,7 @@
         return;
       }
       $.ajax({
-        url: "{% url 'tweet' %}",
+        url: "{% url 'post_tweet' %}",
         method: "POST",
         data: { tweetText: tweetText },
       }).done((response) => {
@@ -482,7 +482,7 @@
     });
     $("#get-replies-button").on("click", () => {
       $.ajax({
-        url: "{% url 'save_replies' %}",
+        url: "{% url 'save_all_replies' %}",
         method: "POST",
       }).done((response) => {
         if (response.status === "success") {

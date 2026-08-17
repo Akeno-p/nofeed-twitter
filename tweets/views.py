@@ -58,7 +58,10 @@ def _set_display_created_at(tweet):
         diff_minutes = int(diff_total_seconds % 3600 // 60)
 
         if diff_hours == 0:
-            relative_time = f"{diff_minutes}分"
+            if diff_minutes == 0:
+                relative_time = "今"
+            else:
+                relative_time = f"{diff_minutes}分"
         else:
             relative_time = f"{diff_hours}時間"
         tweet.display_created_at = relative_time
@@ -74,24 +77,29 @@ def _set_display_created_at(tweet):
 
 
 @login_required
-def tweet(request):
+def post_tweet(request):
+    """ツイートボタンを押した時の処理"""
     tweet_text = request.POST.get("tweetText")
 
-    def tweet_request():
-        tweet_response = requests.post(
+    def post_tweet_request():
+        post_tweet_response = requests.post(
             TWITTER_TWEET_ENDPOINT,
             headers={"Authorization": f"Bearer {request.user.access_token}"},
             json={"text": tweet_text},
         )
-        return tweet_response
+        return post_tweet_response
 
-    tweet_status, tweet_result = _request_with_token_refresh(
-        request, tweet_request, 201
+    post_tweet_status, post_tweet_result = _request_with_token_refresh(
+        request, post_tweet_request, 201
     )
 
-    if tweet_status == "error":
-        return JsonResponse(tweet_result)
+    post_tweet_result
 
+    if post_tweet_status == "error":
+        return JsonResponse(post_tweet_result)
+
+    # 手元のデータからでも保存する値は組み立てられるが、処理が複雑になるうえ
+    # 実際のデータとずれるリスクもあるため、APIから取り直す形にしている。
     def get_tweet():
         get_tweet_response = requests.get(
             TWITTER_GET_TWEET_ENDPOINT.format(tweet_id=tweet_id),
@@ -103,7 +111,7 @@ def tweet(request):
 
         return get_tweet_response
 
-    tweet_id = tweet_result.json().get("data").get("id")
+    tweet_id = post_tweet_result.json().get("data").get("id")
 
     get_tweet_status, get_tweet_result = _request_with_token_refresh(
         request, get_tweet, 200
@@ -225,7 +233,9 @@ def replies_view(request):
         Tweet.objects.filter(
             author=request.user.user_id,
             in_reply_to_tweet_id__isnull=False,
-        ).order_by("-created_at")
+        )
+        .select_related("author")
+        .order_by("-created_at")
     )
 
     tweet_ids = [tweet.id for tweet in my_tweets]
@@ -243,22 +253,34 @@ def replies_view(request):
     }
 
     for reply in replies:
-        reply.text = _strip_leading_mentions(reply.text)
+        parent_tweet = tweets_by_id[reply.in_reply_to_tweet_id]
+        my_reply = my_reply_by_parent_tweet_id.get(reply.id)
 
-        _set_display_created_at(reply)
-        reply.in_reply_to_tweet_text = _strip_leading_mentions(
-            tweets_by_id[reply.in_reply_to_tweet_id].text
-        )
-
-        my_reply_to_reply = my_reply_by_parent_tweet_id.get(reply.id)
-        if my_reply_to_reply:
-            _set_display_created_at(my_reply_to_reply)
-            reply.my_reply_to_reply = my_reply_to_reply
-            reply.my_reply_to_reply.display_text = _strip_leading_mentions(
-                reply.my_reply_to_reply.text
-            )
+        _decorate_reply(reply, parent_tweet, my_reply)
 
     return render(request, "tweets/replies.html", {"replies": replies})
+
+
+def _decorate_reply(
+    base_reply: Tweet, parent_tweet: Tweet, my_reply: Tweet | None = None
+):
+    """repliesページの表示用にデータを成形する。
+
+    base_reply : 主役のリプライ
+    parent_tweet : 主役のリプライの送信元ツイート
+    my_reply : 主役リプライに対しての自分のリプライ(未返信の場合はNone)
+    """
+    base_reply.text = _strip_leading_mentions(base_reply.text)
+
+    _set_display_created_at(base_reply)
+    base_reply.in_reply_to_tweet_text = _strip_leading_mentions(parent_tweet.text)
+
+    if my_reply:
+        _set_display_created_at(my_reply)
+        base_reply.my_reply = my_reply
+        base_reply.my_reply.display_text = _strip_leading_mentions(
+            base_reply.my_reply.text
+        )
 
 
 def _strip_leading_mentions(text):
@@ -271,33 +293,72 @@ def _strip_leading_mentions(text):
     return re.sub(r"^@\w+\s+", "", text)
 
 
-def reply(request):
+def post_reply(request):
+    """リプライ返信ボタンを押した時の処理"""
     reply_text = request.POST.get("replyText")
-    in_reply_to_tweet_id = request.POST.get("replyId")
+    reply_id = request.POST.get("replyId")
 
-    def reply_request():
-        reply_response = requests.post(
+    def post_reply_request():
+        post_reply_response = requests.post(
             TWITTER_TWEET_ENDPOINT,
             headers={"Authorization": f"Bearer {request.user.access_token}"},
             json={
                 "text": reply_text,
-                "reply": {"in_reply_to_tweet_id": in_reply_to_tweet_id},
+                "reply": {"in_reply_to_tweet_id": reply_id},
             },
         )
-        return reply_response
+        return post_reply_response
 
-    reply_status, reply_result = _request_with_token_refresh(
-        request, reply_request, 201
+    post_reply_status, post_reply_result = _request_with_token_refresh(
+        request, post_reply_request, 201
     )
 
-    if reply_status == "error":
-        return JsonResponse(reply_result)
+    if post_reply_status == "error":
+        return JsonResponse(post_reply_result)
 
-    return JsonResponse({"status": "success"})
+    posted_reply_id = post_reply_result.json().get("data").get("id")
+
+    def get_reply():
+        get_reply_response = requests.get(
+            TWITTER_GET_TWEET_ENDPOINT.format(tweet_id=posted_reply_id),
+            headers={"Authorization": f"Bearer {request.user.access_token}"},
+            params={
+                "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+            },
+        )
+        return get_reply_response
+
+    get_reply_status, get_reply_result = _request_with_token_refresh(
+        request, get_reply, 200
+    )
+
+    if get_reply_status == "error":
+        return JsonResponse(get_reply_result)
+
+    created_reply = get_reply_result.json().get("data")
+
+    created_reply_list = [created_reply]
+
+    save_replies_status, save_replies_result = _save_replies(
+        request, created_reply_list
+    )
+
+    if save_replies_status == "error":
+        return JsonResponse(save_replies_result)
+
+    reply = Tweet.objects.get(id=reply_id)
+    parent_tweet = Tweet.objects.get(id=reply.in_reply_to_tweet_id)
+    my_reply = Tweet.objects.get(id=posted_reply_id)
+
+    _decorate_reply(reply, parent_tweet, my_reply)
+
+    html = render_to_string("tweets/_replies.html", {"reply": reply})
+
+    return JsonResponse({"status": "success", "html": html})
 
 
-def save_replies(request):
-
+def save_all_replies(request):
+    """リプライ全件取得ボタンを押した時の処理"""
     my_tweet_ids = Tweet.objects.filter(
         author=request.user.user_id, in_reply_to_tweet_id__isnull=True
     ).values_list("id", flat=True)
@@ -309,7 +370,7 @@ def save_replies(request):
     )
 
     def get_replies():
-        replies_response = requests.get(
+        get_replies_response = requests.get(
             TWITTER_SEARCH_RECENT_ENDPOINT,
             headers={"Authorization": f"Bearer {request.user.access_token}"},
             params={
@@ -320,7 +381,7 @@ def save_replies(request):
             },
         )
 
-        return replies_response
+        return get_replies_response
 
     replies_status, replies_result = _request_with_token_refresh(
         request, get_replies, 200
@@ -331,11 +392,28 @@ def save_replies(request):
 
     replies_response_list = replies_result.json().get("data")
 
+    if replies_response_list is not None:
+        save_replies_status, save_replies_result = _save_replies(
+            request, replies_response_list
+        )
+
+        if save_replies_status == "error":
+            return JsonResponse(save_replies_result)
+
+    return JsonResponse({"status": "success"})
+
+
+def _save_replies(request, replies_response_list):
+    """保存したいreplyのレスポンスをリストにして渡すと、渡したreplyが保存される。
+
+    戻り値は、
+    第一引数にstatus : error or success
+    第二引数にerrorの場合はerror詳細 successの場合はNone
+    """
     replies_list = []
     not_saved_user_ids = []
     all_tweet_ids = set(Tweet.objects.values_list("id", flat=True))
     saved_user_ids = set(User.objects.values_list("id", flat=True))
-
     for reply in replies_response_list:
         author_id = int(reply.get("author_id"))
 
@@ -367,17 +445,17 @@ def save_replies(request):
                 in_reply_to_tweet_id=in_reply_to_tweet_id,
                 in_quoted_to_tweet_id=in_quoted_to_tweet_id,
             )
-        replies_list.append(reply)
+            replies_list.append(reply)
 
     if not_saved_user_ids:
         save_users_status, save_users_result = _save_users(request, not_saved_user_ids)
 
         if save_users_status == "error":
-            return JsonResponse(save_users_result)
+            return save_users_status, save_users_result
 
     Tweet.objects.bulk_create(replies_list)
 
-    return JsonResponse({"status": "success"})
+    return "success", None
 
 
 def _get_users(request, user_ids):

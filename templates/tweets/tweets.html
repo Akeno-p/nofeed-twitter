@@ -76,7 +76,7 @@
       }
 
       $.ajax({
-        url: "{% url 'tweet' %}",
+        url: "{% url 'post_tweet' %}",
         method: "POST",
         data: { tweetText: tweetText },
       }).done((response) => {
