@@ -93,8 +93,6 @@ def post_tweet(request):
         request, post_tweet_request, 201
     )
 
-    post_tweet_result
-
     if post_tweet_status == "error":
         return JsonResponse(post_tweet_result)
 
@@ -156,28 +154,39 @@ def post_tweet(request):
 
 @login_required
 def save_all_tweets(request):
+    """ツイート全件取得ボタンを押した時の処理"""
+    all_tweets_list = []
+    next_token = None
 
     def get_all_tweets():
-        all_tweets_response = requests.get(
+        params = {
+            "max_results": 100,
+            "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+        }
+        if next_token:
+            params["pagination_token"] = next_token
+
+        response = requests.get(
             TWITTER_USER_TWEETS_ENDPOINT.format(user_id=request.user.user.id),
             headers={"Authorization": f"Bearer {request.user.access_token}"},
             # 最大100件までしか取得できない
-            params={
-                "max_results": 100,
-                "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
-            },
+            params=params,
         )
 
-        return all_tweets_response
+        return response
 
-    get_all_tweets_status, get_all_tweets_result = _request_with_token_refresh(
-        request, get_all_tweets, 200
-    )
+    while True:
+        status, result = _request_with_token_refresh(request, get_all_tweets, 200)
 
-    if get_all_tweets_status == "error":
-        return JsonResponse(get_all_tweets_result)
+        if status == "error":
+            return JsonResponse(result)
 
-    all_tweets_list = get_all_tweets_result.json().get("data")
+        body = result.json()
+        all_tweets_list.extend(body["data"])
+        next_token = body["meta"].get("next_token")
+
+        if not next_token:
+            break
 
     saved_tweet_ids = set(
         Tweet.objects.filter(author=request.user.user_id).values_list("id", flat=True)
@@ -359,6 +368,9 @@ def post_reply(request):
 
 def save_all_replies(request):
     """リプライ全件取得ボタンを押した時の処理"""
+    all_replies_list = []
+    next_token = None
+
     my_tweet_ids = Tweet.objects.filter(
         author=request.user.user_id, in_reply_to_tweet_id__isnull=True
     ).values_list("id", flat=True)
@@ -370,31 +382,39 @@ def save_all_replies(request):
     )
 
     def get_replies():
-        get_replies_response = requests.get(
+        params = {
+            "query": f"to:{request.user.user.username} -is:retweet -from:{request.user.user.username}",
+            "max_results": 100,
+            "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+            "since_id": last_reply_id,
+        }
+        if next_token:
+            params["pagination_token"] = next_token
+
+        response = requests.get(
             TWITTER_SEARCH_RECENT_ENDPOINT,
             headers={"Authorization": f"Bearer {request.user.access_token}"},
-            params={
-                "query": f"to:{request.user.user.username} -is:retweet -from:{request.user.user.username}",
-                "max_results": 100,
-                "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
-                "since_id": last_reply_id,
-            },
+            params=params,
         )
 
-        return get_replies_response
+        return response
 
-    replies_status, replies_result = _request_with_token_refresh(
-        request, get_replies, 200
-    )
+    while True:
+        status, result = _request_with_token_refresh(request, get_replies, 200)
 
-    if replies_status == "error":
-        JsonResponse(replies_result)
+        if status == "error":
+            JsonResponse(result)
 
-    replies_response_list = replies_result.json().get("data")
+        body = result.json()
+        all_replies_list.extend(body["data"])
+        next_token = body["meta"].get("next_token")
 
-    if replies_response_list is not None:
+        if not next_token:
+            break
+
+    if all_replies_list is not None:
         save_replies_status, save_replies_result = _save_replies(
-            request, replies_response_list
+            request, all_replies_list
         )
 
         if save_replies_status == "error":
