@@ -3,6 +3,8 @@
 定数やエンドポイントURLは common/x_api.py に置く。
 """
 
+import logging
+
 import requests
 
 from common.x_api import (
@@ -11,6 +13,8 @@ from common.x_api import (
     TWITTER_TOKEN_ENDPOINT,
 )
 from users.models import Account
+
+logger = logging.getLogger(__name__)
 
 
 def _update_tokens(request):
@@ -77,6 +81,9 @@ def _request_with_token_refresh(request, send_request, success_code):
         response = send_request()
 
     if response.status_code != success_code:
+        logger.error(
+            "APIリクエスト失敗: status=%s body=%s", response.status_code, response.text
+        )
         return "error", {
             "status": "error",
             "message": "想定外のエラーが発生しました。",
