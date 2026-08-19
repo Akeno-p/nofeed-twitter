@@ -1,16 +1,36 @@
 <!-- prettier-ignore -->
 {% extends "base_home.html" %}
 {% block home_body %}
-<div class="border-b-2 border-slate-300 h-1/12 pl-8 flex items-center">
+<div
+  class="border-b-2 border-slate-300 h-1/12 px-8 flex items-center justify-between"
+>
   <h2 class="text-3xl font-bold">リプライ</h2>
+  <button
+    class="bg-slate-100 text-slate-700 border border-slate-500 rounded-3xl ml-2 p-2 hover:bg-slate-700 hover:text-slate-100 cursor-pointer"
+    id="open-get-replies-modal"
+  >
+    <div class="flex justify-center items-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-8"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0-3.75-3.75M17.25 21 21 17.25"
+        />
+      </svg>
+      <p class="text-lg">リプライ取得</p>
+    </div>
+  </button>
 </div>
 <div class="h-11/12 overflow-y-auto">
-  <div>
-    <!-- prettier-ignore -->
-    {% for reply in replies %}
-      {% include "tweets/_replies.html" %}
-    {% endfor %}
-  </div>
+  <!-- prettier-ignore -->
+  {% include "tweets/_replies_list.html" %}
 </div>
 <!-- リプライ元ツイート確認ダイアログ -->
 <dialog
@@ -44,6 +64,74 @@
     </div>
     <div class="flex-1 rounded-2xl">
       <p class="whitespace-pre-wrap text-lg" id="tweet-text"></p>
+    </div>
+  </div>
+</dialog>
+
+<!-- リプライ全件取得モーダル -->
+<dialog
+  class="m-auto border-2 border-slate-300 rounded-2xl w-xl focus:outline-none"
+  id="get-replies-modal"
+>
+  <div class="flex flex-col p-2 bg-slate-50 text-slate-700">
+    <div>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-8 text-slate-500 hover:text-slate-700 cursor-pointer"
+        id="close-get-replies-modal"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M6 18 18 6M6 6l12 12"
+        />
+      </svg>
+    </div>
+    <div class="flex flex-col items-center justify-center p-5">
+      <div class="self-center rounded-2xl bg-slate-200 p-2 mb-4">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-10"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+          />
+        </svg>
+      </div>
+      <p class="text-xl">未取得のリプライを全件してもよろしいですか？</p>
+      <p class="text-lg">※ リプライの取得1件につき約0.7円かかります。</p>
+      <button
+        class="bg-slate-700 text-slate-100 text-lg w-52 rounded-lg p-2 mt-6 hover:bg-slate-800 cursor-pointer"
+        id="get-replies-button"
+      >
+        <div class="flex justify-center items-center gap-2" id="">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+            />
+          </svg>
+          <p>取得</p>
+        </div>
+      </button>
     </div>
   </div>
 </dialog>
@@ -97,6 +185,36 @@
           alert(
             "エラーコード" + response.error_code + "： " + response.message,
           );
+        } else {
+          alert("想定外のエラーが発生しました。");
+        }
+      });
+    });
+
+    // リプライ取得系
+    $("#open-get-replies-modal").on("click", () => {
+      $("#get-replies-modal")[0].showModal();
+      $("#settings-popover").fadeOut();
+    });
+    $("#close-get-replies-modal").on("click", () => {
+      $("#get-replies-modal")[0].close();
+    });
+    $("#get-replies-button").on("click", () => {
+      $.ajax({
+        url: "{% url 'save_all_replies' %}",
+        method: "POST",
+      }).done((response) => {
+        if (response.status === "success") {
+          $("#replies_list").replaceWith(response.html);
+          showSuccessToast("成功");
+          $("#get-replies-modal")[0].close();
+        } else if (response.status === "error") {
+          $("#get-replies-modal")[0].close();
+          alert(
+            "エラーコード" + response.error_code + "： " + response.message,
+          );
+        } else {
+          alert("想定外のエラーが発生しました。");
         }
       });
     });

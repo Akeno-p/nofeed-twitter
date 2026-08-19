@@ -406,7 +406,9 @@ def save_all_replies(request):
             JsonResponse(result)
 
         body = result.json()
-        all_replies_list.extend(body["data"])
+        replies = body.get("data")
+        if replies:
+            all_replies_list.extend(replies)
         next_token = body["meta"].get("next_token")
 
         if not next_token:
@@ -420,7 +422,47 @@ def save_all_replies(request):
         if save_replies_status == "error":
             return JsonResponse(save_replies_result)
 
-    return JsonResponse({"status": "success"})
+    my_tweets = list(
+        Tweet.objects.filter(
+            author=request.user.user_id,
+            in_reply_to_tweet_id__isnull=True,
+        ).order_by("-created_at")
+    )
+
+    my_replies = list(
+        Tweet.objects.filter(
+            author=request.user.user_id,
+            in_reply_to_tweet_id__isnull=False,
+        )
+        .select_related("author")
+        .order_by("-created_at")
+    )
+
+    tweet_ids = [tweet.id for tweet in my_tweets]
+
+    replies = list(
+        Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
+        .exclude(author=request.user.user_id)
+        .select_related("author")
+        .order_by("-created_at")
+    )
+
+    tweets_by_id = {tweet.id: tweet for tweet in my_tweets}
+    my_reply_by_parent_tweet_id = {
+        tweet.in_reply_to_tweet_id: tweet for tweet in my_replies
+    }
+
+    for reply in replies:
+        parent_tweet = tweets_by_id[reply.in_reply_to_tweet_id]
+        my_reply = my_reply_by_parent_tweet_id.get(reply.id)
+
+        _decorate_reply(reply, parent_tweet, my_reply)
+
+    html = render_to_string(
+        "tweets/_replies_list.html", {"replies": replies}, request=request
+    )
+
+    return JsonResponse({"status": "success", "html": html})
 
 
 def _save_replies(request, replies_response_list):
