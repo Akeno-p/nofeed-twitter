@@ -226,7 +226,23 @@ def save_all_tweets(request):
         tweets_list.append(tweet)
 
     Tweet.objects.bulk_create(tweets_list)
-    return JsonResponse({"status": "success"})
+
+    my_tweets = list(
+        Tweet.objects.filter(
+            author=request.user.user_id, in_reply_to_tweet_id__isnull=True
+        )
+        .select_related("author")
+        .order_by("-created_at")
+    )
+
+    for tweet in my_tweets:
+        _set_display_created_at(tweet)
+
+    html = render_to_string(
+        "tweets/_tweets_list.html", {"my_tweets": my_tweets}, request=request
+    )
+
+    return JsonResponse({"status": "success", "html": html})
 
 
 @login_required

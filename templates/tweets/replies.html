@@ -205,7 +205,7 @@
         method: "POST",
       }).done((response) => {
         if (response.status === "success") {
-          $("#replies_list").replaceWith(response.html);
+          $("#replies-list").replaceWith(response.html);
           showSuccessToast("成功");
           $("#get-replies-modal")[0].close();
         } else if (response.status === "error") {
