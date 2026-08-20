@@ -36,12 +36,39 @@
           alt="アイコン"
         />
       </div>
-      <div class="flex-1 flex mt-2">
+      <div class="ml-4 flex-1 flex flex-col mt-2 border-b-2">
         <textarea
           id="tweet-text"
-          class="flex-1 ml-4 border-b-2 border-slate-300 text-2xl field-sizing-content resize-none self-start focus:outline-none focus:border-slate-500"
+          class="border-slate-300 text-2xl field-sizing-content resize-none focus:outline-none focus:border-slate-500"
           placeholder="なにしてる？"
         ></textarea>
+        <div class="p-4 gap-4 grid grid-cols-2">
+          <!-- prettier-ignore -->
+          {% for image_number in "0123" %}
+            {% include "tweets/_image_preview.html" %}
+          {% endfor %}
+        </div>
+        <label
+          id="tweet-image-label"
+          for="tweet-image"
+          class="cursor-pointer self-start"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+            />
+          </svg>
+        </label>
+        <input id="tweet-image" class="hidden" type="file" accept="image/*" />
       </div>
     </div>
     <div class="flex justify-end mt-3">
@@ -218,6 +245,29 @@
           alert("想定外のエラーが発生しました。");
         }
       });
+    });
+
+    // 画像系
+    let imageUrlList = [];
+    $("#tweet-image").on("change", () => {
+      const image = $("#tweet-image")[0].files[0];
+      const imageUrl = URL.createObjectURL(image);
+
+      imageUrlList.push(imageUrl);
+      $("#tweet-image").val("");
+
+      const isFull = imageUrlList.length >= 4;
+      $("#tweet-image").prop("disabled", isFull);
+      $("#tweet-image-label").toggleClass(
+        "opacity-40 cursor-not-allowed",
+        isFull,
+      );
+      $("#tweet-image-label").toggleClass("cursor-pointer", !isFull);
+
+      for (const [index, url] of imageUrlList.entries()) {
+        $(`[data-image-number="${index}"]`).removeClass("hidden");
+        $(`[data-image-number="${index}"] > img`).attr("src", url);
+      }
     });
   });
 </script>
