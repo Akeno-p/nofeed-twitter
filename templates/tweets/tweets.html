@@ -176,17 +176,17 @@
 </dialog>
 
 <script>
-  const renderImagePreviews = (imageUrlList) => {
+  const renderImagePreviews = (imageList) => {
     $(`[data-image-number]`).addClass("hidden");
     $(`[data-image-number`).removeAttr("src");
-    for (const [index, url] of imageUrlList.entries()) {
+    for (const [index, image] of imageList.entries()) {
       $(`[data-image-number="${index}"]`).removeClass("hidden");
-      $(`[data-image-number="${index}"] > img`).attr("src", url);
+      $(`[data-image-number="${index}"] > img`).attr("src", image.url);
     }
   };
 
-  const updateImageInputState = (imageUrlList) => {
-    const isFull = imageUrlList.length >= 4;
+  const updateImageInputState = (imageList) => {
+    const isFull = imageList.length >= 4;
     $("#tweet-image").prop("disabled", isFull);
     $("#tweet-image-label").toggleClass(
       "opacity-40 cursor-not-allowed",
@@ -196,6 +196,43 @@
   };
 
   $(document).ready(() => {
+    // ツイート文章入力欄 文字数表示
+    $("#tweet-text").on("input", () => {
+      let charCount = $("#tweet-text").val().length;
+      $("#char-count").text(charCount);
+      if (charCount > 140) {
+        $("#char-counter").removeClass("text-slate-400");
+        $("#char-counter").addClass("text-red-400");
+      } else {
+        $("#char-counter").removeClass("text-red-400");
+        $("#char-counter").addClass("text-slate-400");
+      }
+    });
+
+    // 画像系
+    let imageList = [];
+    $("#tweet-image").on("change", () => {
+      const file = $("#tweet-image")[0].files[0];
+      const imageUrl = URL.createObjectURL(file);
+
+      imageList.push({ url: imageUrl, file: file });
+      console.log(imageList);
+      $("#tweet-image").val("");
+      renderImagePreviews(imageList);
+      updateImageInputState(imageList);
+    });
+
+    $(`[data-image-number] > button`).on("click", function () {
+      const dataImageNumber = $(this)
+        .closest("[data-image-number]")
+        .data("image-number");
+
+      imageList.splice(dataImageNumber, 1);
+      renderImagePreviews(imageList);
+      updateImageInputState(imageList);
+    });
+
+    // ツイート系
     $("#tweet-button").on("click", () => {
       const tweetText = $("#tweet-text").val();
       if (tweetText === "") {
@@ -225,19 +262,6 @@
       });
     });
 
-    $("#tweet-text").on("input", () => {
-      let charCount = $("#tweet-text").val().length;
-      $("#char-count").text(charCount);
-      if (charCount > 140) {
-        console.log("140超えた");
-        $("#char-counter").removeClass("text-slate-400");
-        $("#char-counter").addClass("text-red-400");
-      } else {
-        $("#char-counter").removeClass("text-red-400");
-        $("#char-counter").addClass("text-slate-400");
-      }
-    });
-
     // ツイート全件取得系
     $("#open-get-all-tweets-modal").on("click", () => {
       $("#get-all-tweets-modal")[0].showModal();
@@ -264,28 +288,6 @@
           alert("想定外のエラーが発生しました。");
         }
       });
-    });
-
-    // 画像系
-    let imageUrlList = [];
-    $("#tweet-image").on("change", () => {
-      const image = $("#tweet-image")[0].files[0];
-      const imageUrl = URL.createObjectURL(image);
-
-      imageUrlList.push(imageUrl);
-      $("#tweet-image").val("");
-      renderImagePreviews(imageUrlList);
-      updateImageInputState(imageUrlList);
-    });
-
-    $(`[data-image-number] > button`).on("click", function () {
-      const dataImageNumber = $(this)
-        .closest("[data-image-number]")
-        .data("image-number");
-
-      imageUrlList.splice(dataImageNumber, 1);
-      renderImagePreviews(imageUrlList);
-      updateImageInputState(imageUrlList);
     });
   });
 </script>
