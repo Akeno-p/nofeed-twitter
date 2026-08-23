@@ -42,7 +42,7 @@
           class="border-slate-300 text-2xl field-sizing-content resize-none focus:outline-none focus:border-slate-500"
           placeholder="なにしてる？"
         ></textarea>
-        <div class="p-4 gap-4 grid grid-cols-2">
+        <div class="p-4 gap-4 grid grid-cols-4">
           <!-- prettier-ignore -->
           {% for image_number in "0123" %}
             {% include "tweets/_image_preview.html" %}
@@ -176,6 +176,25 @@
 </dialog>
 
 <script>
+  const renderImagePreviews = (imageUrlList) => {
+    $(`[data-image-number]`).addClass("hidden");
+    $(`[data-image-number`).removeAttr("src");
+    for (const [index, url] of imageUrlList.entries()) {
+      $(`[data-image-number="${index}"]`).removeClass("hidden");
+      $(`[data-image-number="${index}"] > img`).attr("src", url);
+    }
+  };
+
+  const updateImageInputState = (imageUrlList) => {
+    const isFull = imageUrlList.length >= 4;
+    $("#tweet-image").prop("disabled", isFull);
+    $("#tweet-image-label").toggleClass(
+      "opacity-40 cursor-not-allowed",
+      isFull,
+    );
+    $("#tweet-image-label").toggleClass("cursor-pointer", !isFull);
+  };
+
   $(document).ready(() => {
     $("#tweet-button").on("click", () => {
       const tweetText = $("#tweet-text").val();
@@ -255,19 +274,18 @@
 
       imageUrlList.push(imageUrl);
       $("#tweet-image").val("");
+      renderImagePreviews(imageUrlList);
+      updateImageInputState(imageUrlList);
+    });
 
-      const isFull = imageUrlList.length >= 4;
-      $("#tweet-image").prop("disabled", isFull);
-      $("#tweet-image-label").toggleClass(
-        "opacity-40 cursor-not-allowed",
-        isFull,
-      );
-      $("#tweet-image-label").toggleClass("cursor-pointer", !isFull);
+    $(`[data-image-number] > button`).on("click", function () {
+      const dataImageNumber = $(this)
+        .closest("[data-image-number]")
+        .data("image-number");
 
-      for (const [index, url] of imageUrlList.entries()) {
-        $(`[data-image-number="${index}"]`).removeClass("hidden");
-        $(`[data-image-number="${index}"] > img`).attr("src", url);
-      }
+      imageUrlList.splice(dataImageNumber, 1);
+      renderImagePreviews(imageUrlList);
+      updateImageInputState(imageUrlList);
     });
   });
 </script>
