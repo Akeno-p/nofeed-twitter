@@ -32,6 +32,8 @@ TWITTER_USERS_ME_ENDPOINT = "https://api.x.com/2/users/me"
 TWITTER_USERS_ENDPOINT = "https://api.x.com/2/users"
 # POST：ツイート投稿
 TWITTER_TWEET_ENDPOINT = "https://api.x.com/2/tweets"
+# POST：画像のアップロード
+TWITTER_MEDIA_ENDPOINT = "https://api.x.com/2/media/upload"
 # GET：ツイート単体取得
 TWITTER_GET_TWEET_ENDPOINT = "https://api.x.com/2/tweets/{tweet_id}"
 # GET：ユーザーのツイート一覧取得

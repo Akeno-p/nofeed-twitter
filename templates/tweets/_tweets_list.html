@@ -1,6 +1,8 @@
 <!-- prettier-ignore -->
 <div id="tweets-list">
   {% for tweet in my_tweets %} 
+  <div id="tweet">
     {% include "tweets/_tweets.html" %}
+  </div>
   {% endfor %}
 </div>

@@ -11,12 +11,13 @@ from django.utils import timezone
 from common.utils import _request_with_token_refresh
 from common.x_api import (
     TWITTER_GET_TWEET_ENDPOINT,
+    TWITTER_MEDIA_ENDPOINT,
     TWITTER_SEARCH_RECENT_ENDPOINT,
     TWITTER_TWEET_ENDPOINT,
     TWITTER_USER_TWEETS_ENDPOINT,
     TWITTER_USERS_ENDPOINT,
 )
-from tweets.models import Tweet
+from tweets.models import Tweet, TweetMedia
 from users.models import User
 
 
@@ -32,6 +33,7 @@ def tweets_view(request):
 
     for tweet in my_tweets:
         _set_display_created_at(tweet)
+        tweet.text = tweet.text.rsplit(" https://t.co", 1)[0]
 
     return render(request, "tweets/tweets.html", {"my_tweets": my_tweets})
 
@@ -80,12 +82,38 @@ def _set_display_created_at(tweet):
 def post_tweet(request):
     """ツイートボタンを押した時の処理"""
     tweet_text = request.POST.get("tweetText")
+    images_list = request.FILES.getlist("images")
+
+    media_ids = []
+
+    def post_media_request(image):
+        image.seek(0)
+        post_media_response = requests.post(
+            TWITTER_MEDIA_ENDPOINT,
+            headers={"Authorization": f"Bearer {request.user.access_token}"},
+            files={"media": image},
+            data={"media_category": "tweet_image"},
+        )
+        return post_media_response
+
+    for image in images_list:
+        image_status, image_result = _request_with_token_refresh(
+            request, lambda image=image: post_media_request(image), 200
+        )
+        if image_status == "error":
+            return JsonResponse(image_result)
+
+        media_ids.append(image_result.json()["data"]["id"])
+
+    payload = {"text": tweet_text}
+    if media_ids:
+        payload["media"] = {"media_ids": media_ids}
 
     def post_tweet_request():
         post_tweet_response = requests.post(
             TWITTER_TWEET_ENDPOINT,
             headers={"Authorization": f"Bearer {request.user.access_token}"},
-            json={"text": tweet_text},
+            json=payload,
         )
         return post_tweet_response
 
@@ -96,20 +124,22 @@ def post_tweet(request):
     if post_tweet_status == "error":
         return JsonResponse(post_tweet_result)
 
-    # 手元のデータからでも保存する値は組み立てられるが、処理が複雑になるうえ
-    # 実際のデータとずれるリスクもあるため、APIから取り直す形にしている。
+    # 手元のデータからでも保存する値は組み立てられるが、処理が複雑になるのと、
+    # 実際のデータとずれるリスクもあるため、APIから取り直す形にしています。
+    tweet_id = post_tweet_result.json().get("data").get("id")
+
     def get_tweet():
         get_tweet_response = requests.get(
             TWITTER_GET_TWEET_ENDPOINT.format(tweet_id=tweet_id),
             headers={"Authorization": f"Bearer {request.user.access_token}"},
             params={
-                "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+                "post.fields": "created_at,author_id,conversation_id,referenced_tweets,attachments",
+                "expansions": "attachments.media_keys",
+                "media.fields": "url,type,alt_text,width,height,duration_ms",
             },
         )
 
         return get_tweet_response
-
-    tweet_id = post_tweet_result.json().get("data").get("id")
 
     get_tweet_status, get_tweet_result = _request_with_token_refresh(
         request, get_tweet, 200
@@ -142,8 +172,29 @@ def post_tweet(request):
 
     tweet.save()
 
+    tweet_media_list = get_tweet_result.json().get("includes", {}).get("media", [])
+
+    media_list = []
+
+    for tweet_media in tweet_media_list:
+        media = TweetMedia(
+            media_key=tweet_media.get("media_key"),
+            tweet=tweet,
+            media_type=tweet_media.get("type"),
+            url=tweet_media.get("url"),
+            alt_text=tweet_media.get("alt_text"),
+            width=tweet_media.get("width"),
+            height=tweet_media.get("height"),
+            duration_ms=tweet_media.get("duration_ms"),
+        )
+        media_list.append(media)
+
+    TweetMedia.objects.bulk_create(media_list)
+
     # tweetのcreated_atをstrからdatetimeに更新するため
     tweet.refresh_from_db()
+
+    tweet.text = tweet.text.rsplit(" https://t.co", 1)[0]
 
     _set_display_created_at(tweet)
 
@@ -237,6 +288,7 @@ def save_all_tweets(request):
 
     for tweet in my_tweets:
         _set_display_created_at(tweet)
+        tweet.text = tweet.text.rsplit(" https://t.co", 1)[0]
 
     html = render_to_string(
         "tweets/_tweets_list.html", {"my_tweets": my_tweets}, request=request

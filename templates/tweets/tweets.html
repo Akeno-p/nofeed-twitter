@@ -245,15 +245,26 @@
         return;
       }
 
+      const formData = new FormData();
+      formData.append("tweetText", tweetText);
+      for (const image of imageList) {
+        formData.append("images", image.file);
+      }
+
       $.ajax({
         url: "{% url 'post_tweet' %}",
         method: "POST",
-        data: { tweetText: tweetText },
+        data: formData,
+        processData: false,
+        contentType: false,
       }).done((response) => {
         if (response.status === "success") {
           showSuccessToast("ツイートしました");
           $("#tweet-text").val("");
-          $("#tweet-list").prepend(response.html);
+          imageList.length = 0;
+          renderImagePreviews(imageList)
+          updateImageInputState(imageList)
+          $("#tweet").prepend(response.html);
         } else if (response.status === "error") {
           alert(
             "エラーコード" + response.error_code + "： " + response.message,
