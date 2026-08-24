@@ -175,6 +175,33 @@
   </div>
 </dialog>
 
+<!-- 画像拡大表示 -->
+<dialog
+  class="m-auto border-2 border-slate-300 rounded-2xl relative focus:outline-none"
+  id="img-modal"
+>
+  <button
+    type="button"
+    class="rounded-full bg-slate-200/70 absolute top-5 right-5 cursor-pointer hover:bg-slate-200/90 outline-slate-500"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      class="size-8 text-slate-900 m-1"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M6 18 18 6M6 6l12 12"
+      />
+    </svg>
+  </button>
+  <img class="m-3 max-w-[80vw] max-h-[80vw] rounded-2xl" />
+</dialog>
+
 <script>
   const renderImagePreviews = (imageList) => {
     $(`[data-image-number]`).addClass("hidden");
@@ -216,7 +243,6 @@
       const imageUrl = URL.createObjectURL(file);
 
       imageList.push({ url: imageUrl, file: file });
-      console.log(imageList);
       $("#tweet-image").val("");
       renderImagePreviews(imageList);
       updateImageInputState(imageList);
@@ -262,8 +288,8 @@
           showSuccessToast("ツイートしました");
           $("#tweet-text").val("");
           imageList.length = 0;
-          renderImagePreviews(imageList)
-          updateImageInputState(imageList)
+          renderImagePreviews(imageList);
+          updateImageInputState(imageList);
           $("#tweet").prepend(response.html);
         } else if (response.status === "error") {
           alert(
@@ -299,6 +325,17 @@
           alert("想定外のエラーが発生しました。");
         }
       });
+    });
+
+    // 画像拡大表示
+    $("#tweet img").on("click", function () {
+      const imageUrl = $(this).attr("src");
+      console.log(imageUrl);
+      $("#img-modal img").attr("src", imageUrl);
+      $("#img-modal")[0].showModal();
+    });
+    $("#img-modal button").on("click", () => {
+      $("#img-modal")[0].close();
     });
   });
 </script>

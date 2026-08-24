@@ -15,7 +15,7 @@
     <div class="grid grid-cols-4 gap-2">
       {% for media in tweet.media.all %}
       <img
-        class="rounded-xl aspect-square object-cover w-full w-full"
+        class="rounded-xl aspect-square object-cover w-full"
         src="{{media.url}}"
       />
       {% endfor %}
