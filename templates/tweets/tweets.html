@@ -36,13 +36,16 @@
           alt="アイコン"
         />
       </div>
-      <div class="ml-4 flex-1 flex flex-col mt-2 border-b-2">
+      <div
+        data-image-form
+        class="ml-4 flex-1 flex flex-col mt-2 border-b-2 border-slate-500"
+      >
         <textarea
           id="tweet-text"
-          class="border-slate-300 text-2xl field-sizing-content resize-none focus:outline-none focus:border-slate-500"
+          class="text-2xl field-sizing-content resize-none focus:outline-none"
           placeholder="なにしてる？"
         ></textarea>
-        <div class="p-4 gap-4 grid grid-cols-4">
+        <div class="p-1 gap-4 grid grid-cols-4">
           <!-- prettier-ignore -->
           {% for image_number in "0123" %}
             {% include "tweets/_image_preview.html" %}
@@ -203,25 +206,6 @@
 </dialog>
 
 <script>
-  const renderImagePreviews = (imageList) => {
-    $(`[data-image-number]`).addClass("hidden");
-    $(`[data-image-number`).removeAttr("src");
-    for (const [index, image] of imageList.entries()) {
-      $(`[data-image-number="${index}"]`).removeClass("hidden");
-      $(`[data-image-number="${index}"] > img`).attr("src", image.url);
-    }
-  };
-
-  const updateImageInputState = (imageList) => {
-    const isFull = imageList.length >= 4;
-    $("#tweet-image").prop("disabled", isFull);
-    $("#tweet-image-label").toggleClass(
-      "opacity-40 cursor-not-allowed",
-      isFull,
-    );
-    $("#tweet-image-label").toggleClass("cursor-pointer", !isFull);
-  };
-
   $(document).ready(() => {
     // ツイート文章入力欄 文字数表示
     $("#tweet-text").on("input", () => {
@@ -244,8 +228,9 @@
 
       imageList.push({ url: imageUrl, file: file });
       $("#tweet-image").val("");
-      renderImagePreviews(imageList);
-      updateImageInputState(imageList);
+      const $form = $("#tweet-image").closest("[data-image-form]");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
     });
 
     $(`[data-image-number] > button`).on("click", function () {
@@ -254,8 +239,9 @@
         .data("image-number");
 
       imageList.splice(dataImageNumber, 1);
-      renderImagePreviews(imageList);
-      updateImageInputState(imageList);
+      const $form = $("#tweet-image").closest("[data-image-form]");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
     });
 
     // ツイート系

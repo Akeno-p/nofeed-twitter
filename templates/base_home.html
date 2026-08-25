@@ -228,8 +228,6 @@
   </div>
 </dialog>
 
-
-
 <!-- トースト -->
 <div
   id="toast"
@@ -325,5 +323,22 @@
 
   const showSuccessToast = (message) => showToast(message, "bg-sky-600");
   const showErrorToast = (message) => showToast(message, "bg-red-600");
+
+  // 画像系
+  const renderImagePreviews = (imageList, $form) => {
+    $form.find("[data-image-number]").addClass("hidden");
+    $form.find("[data-image-number]").removeAttr("src");
+    for (const [index, image] of imageList.entries()) {
+      $form.find(`[data-image-number="${index}"]`).removeClass("hidden");
+      $form.find(`[data-image-number="${index}"] > img`).attr("src", image.url);
+    }
+  };
+
+  const updateImageInputState = (imageList, $form) => {
+    const isFull = imageList.length >= 4;
+    $form.find("input[type=file]").prop("disabled", isFull);
+    $form.find("label").toggleClass("opacity-40 cursor-not-allowed", isFull);
+    $form.find("label").toggleClass("cursor-pointer", !isFull);
+  };
 </script>
 {% endblock content %}
