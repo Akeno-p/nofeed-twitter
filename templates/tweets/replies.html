@@ -218,6 +218,36 @@
         }
       });
     });
+
+    // 画像系
+    const replyImages = {};
+    $("[data-reply-image]").on("change", function () {
+      const replyId = $(this).closest("[data-image-form]").data("image-form");
+      replyImages[replyId] ??= [];
+      const imageList = replyImages[replyId];
+
+      const file = $(this)[0].files[0];
+      const imageUrl = URL.createObjectURL(file);
+
+      imageList.push({ url: imageUrl, file: file });
+      $(this).val("");
+      const $form = $(this).closest("[data-image-form]");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
+    });
+
+    $("[data-image-number] > button").on("click", function () {
+      const dataImageNumber = $(this)
+        .closest("[data-image-number]")
+        .data("image-number");
+      const replyId = $(this).closest("[data-image-form]").data("image-form");
+
+      const imageList = replyImages[replyId];
+      imageList.splice(dataImageNumber, 1);
+      const $form = $(this).closest("[data-image-form]");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
+    });
   });
 </script>
 {% endblock home_body %}
