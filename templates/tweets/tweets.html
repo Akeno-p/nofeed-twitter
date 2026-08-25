@@ -220,13 +220,13 @@
 
     // 画像系
     const imageList = [];
+    const $form = $("#tweet-image").closest("[data-image-form]");
     $("#tweet-image").on("change", () => {
       const file = $("#tweet-image")[0].files[0];
       const imageUrl = URL.createObjectURL(file);
 
       imageList.push({ url: imageUrl, file: file });
       $("#tweet-image").val("");
-      const $form = $("#tweet-image").closest("[data-image-form]");
       renderImagePreviews(imageList, $form);
       updateImageInputState(imageList, $form);
     });
@@ -237,7 +237,6 @@
         .data("image-number");
 
       imageList.splice(dataImageNumber, 1);
-      const $form = $("#tweet-image").closest("[data-image-form]");
       renderImagePreviews(imageList, $form);
       updateImageInputState(imageList, $form);
     });
@@ -272,8 +271,8 @@
           showSuccessToast("ツイートしました");
           $("#tweet-text").val("");
           imageList.length = 0;
-          renderImagePreviews(imageList);
-          updateImageInputState(imageList);
+          renderImagePreviews(imageList, $form);
+          updateImageInputState(imageList, $form);
           $("#tweet").prepend(response.html);
         } else if (response.status === "error") {
           alert(
