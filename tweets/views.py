@@ -1,3 +1,4 @@
+import logging
 import re
 
 import requests
@@ -8,7 +9,7 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from common.utils import _request_with_token_refresh
+from common.utils import _request_with_token_refresh, _update_tokens
 from common.x_api import (
     TWITTER_GET_TWEET_ENDPOINT,
     TWITTER_MEDIA_ENDPOINT,
@@ -19,6 +20,8 @@ from common.x_api import (
 )
 from tweets.models import Tweet, TweetMedia
 from users.models import User
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -449,13 +452,18 @@ def save_all_replies(request):
         .aggregate(last_id=Max("id"))["last_id"]
     )
 
+    last_reply_created_at = Tweet.objects.get(id=last_reply_id).created_at
+    last_reply_created_at = timezone.localtime(last_reply_created_at)
+    last_reply_created_at_display = last_reply_created_at.strftime("%Y年%m月%d日")
+
+    params = {
+        "query": f"to:{request.user.user.username} -is:retweet -from:{request.user.user.username}",
+        "max_results": 100,
+        "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+        "since_id": last_reply_id,
+    }
+
     def get_replies():
-        params = {
-            "query": f"to:{request.user.user.username} -is:retweet -from:{request.user.user.username}",
-            "max_results": 100,
-            "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
-            "since_id": last_reply_id,
-        }
         if next_token:
             params["pagination_token"] = next_token
 
@@ -467,13 +475,79 @@ def save_all_replies(request):
 
         return response
 
+    status, message = "success", None
+
     while True:
-        status, result = _request_with_token_refresh(request, get_replies, 200)
+        response = get_replies()
 
-        if status == "error":
-            JsonResponse(result)
+        if response.status_code == 401:
+            if not _update_tokens(request):
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": "アクセストークンの更新に失敗しました。",
+                        "error_code": response.status_code,
+                    }
+                )
+            else:
+                response = get_replies()
 
-        body = result.json()
+        if response.status_code == 400:
+            error_message = response.json().get("errors")[0].get("message")
+            SINCE_ID_TOO_OLD_MESSAGE = "'since_id' must be a tweet id created after"
+
+            if SINCE_ID_TOO_OLD_MESSAGE in error_message:
+                del params["since_id"]
+                response = get_replies()
+
+                if response.status_code == 401:
+                    if not _update_tokens(request):
+                        return JsonResponse(
+                            {
+                                "status": "error",
+                                "message": "アクセストークンの更新に失敗しました。",
+                                "error_code": response.status_code,
+                            }
+                        )
+                    else:
+                        response = get_replies()
+                status, message = (
+                    "partial",
+                    (
+                        "Xの仕様により、取得できるのは直近7日分のリプライのみです。"
+                        f"保存されている最新のリプライは{last_reply_created_at_display}のものなので、"
+                        "それ以降に届いたリプライの一部が取得できていない可能性があります。"
+                    ),
+                )
+            else:
+                logger.error(
+                    "APIリクエスト失敗: status=%s body=%s",
+                    response.status_code,
+                    response.text,
+                )
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": "想定外のエラーが発生しました。",
+                        "error_code": response.status_code,
+                    }
+                )
+
+        if response.status_code != 200:
+            logger.error(
+                "APIリクエスト失敗: status=%s body=%s",
+                response.status_code,
+                response.text,
+            )
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "想定外のエラーが発生しました。",
+                    "error_code": response.status_code,
+                }
+            )
+
+        body = response.json()
         replies = body.get("data")
         if replies:
             all_replies_list.extend(replies)
@@ -530,7 +604,7 @@ def save_all_replies(request):
         "tweets/_replies_list.html", {"replies": replies}, request=request
     )
 
-    return JsonResponse({"status": "success", "html": html})
+    return JsonResponse({"status": status, "message": message, "html": html})
 
 
 def _save_replies(request, replies_response_list):
