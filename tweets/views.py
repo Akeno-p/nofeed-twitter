@@ -36,9 +36,14 @@ def tweets_view(request):
 
     for tweet in my_tweets:
         _set_display_created_at(tweet)
-        tweet.text = tweet.text.rsplit(" https://t.co", 1)[0]
+        _strip_media_link(tweet)
 
     return render(request, "tweets/tweets.html", {"my_tweets": my_tweets})
+
+
+def _strip_media_link(post: Tweet):
+    """画像付き投稿の本文末尾に付く t.co リンクを取り除く。"""
+    post.text = post.text.rsplit(" https://t.co", 1)[0]
 
 
 def _set_display_created_at(tweet):
@@ -197,7 +202,7 @@ def post_tweet(request):
     # tweetのcreated_atをstrからdatetimeに更新するため
     tweet.refresh_from_db()
 
-    tweet.text = tweet.text.rsplit(" https://t.co", 1)[0]
+    _strip_media_link(tweet)
 
     _set_display_created_at(tweet)
 
@@ -291,7 +296,7 @@ def save_all_tweets(request):
 
     for tweet in my_tweets:
         _set_display_created_at(tweet)
-        tweet.text = tweet.text.rsplit(" https://t.co", 1)[0]
+        _strip_media_link(tweet)
 
     html = render_to_string(
         "tweets/_tweets_list.html", {"my_tweets": my_tweets}, request=request
