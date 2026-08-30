@@ -36,11 +36,6 @@ def tweets_view(request):
     return render(request, "tweets/tweets.html", {"my_tweets": my_tweets})
 
 
-def _strip_media_link(post: Tweet):
-    """画像付き投稿の本文末尾に付く t.co リンクを取り除く。"""
-    post.text = post.text.rsplit("https://t.co", 1)[0]
-
-
 def _set_display_created_at(tweet):
     """ツイートに、一覧表示用の作成日時を display_created_at としてセットする。
 
@@ -198,10 +193,8 @@ def post_tweet(request):
 
     # tweetのcreated_atをstrからdatetimeに更新するため
     tweet.refresh_from_db()
-
-    _strip_media_link(tweet)
-
-    _set_display_created_at(tweet)
+    tweet.strip_media_link()
+    tweet.set_display_created_at()
 
     html = render_to_string("tweets/_tweets.html", {"tweet": tweet})
 
@@ -327,8 +320,8 @@ def save_all_tweets(request):
     )
 
     for tweet in my_tweets:
-        _set_display_created_at(tweet)
-        _strip_media_link(tweet)
+        tweet.strip_media_link()
+        tweet.set_display_created_at()
 
     html = render_to_string(
         "tweets/_tweets_list.html", {"my_tweets": my_tweets}, request=request
@@ -378,7 +371,6 @@ def replies_view(request):
         my_reply = my_reply_by_parent_tweet_id.get(reply.id)
 
         _decorate_reply(reply, parent_tweet, my_reply)
-        _strip_media_link(reply)
 
     return render(request, "tweets/replies.html", {"replies": replies})
 
@@ -393,8 +385,8 @@ def _decorate_reply(
     my_reply : 主役リプライに対しての自分のリプライ(未返信の場合はNone)
     """
     base_reply.text = _strip_leading_mentions(base_reply.text)
-
-    _set_display_created_at(base_reply)
+    base_reply.strip_media_link()
+    base_reply.set_display_created_at()
     base_reply.in_reply_to_tweet_text = _strip_leading_mentions(
         parent_tweet.text
     ).rsplit(" https://t.co", 1)[0]
@@ -404,8 +396,8 @@ def _decorate_reply(
     base_reply.in_reply_to_tweet_media_list = json.dumps(parent_tweet_media_list)
 
     if my_reply:
-        _set_display_created_at(my_reply)
-        _strip_media_link(my_reply)
+        my_reply.strip_media_link()
+        my_reply.set_display_created_at()
         base_reply.my_reply = my_reply
         base_reply.my_reply.display_text = _strip_leading_mentions(
             base_reply.my_reply.text
@@ -493,7 +485,6 @@ def post_reply(request):
     my_reply = Tweet.objects.get(id=posted_reply_id)
     reply = Tweet.objects.get(id=reply_id)
     parent_tweet = Tweet.objects.get(id=reply.in_reply_to_tweet_id)
-    _strip_media_link(reply)
     _decorate_reply(reply, parent_tweet, my_reply)
 
     html = render_to_string("tweets/_replies.html", {"reply": reply})
@@ -670,7 +661,6 @@ def save_all_replies(request):
         my_reply = my_reply_by_parent_tweet_id.get(reply.id)
 
         _decorate_reply(reply, parent_tweet, my_reply)
-        _strip_media_link(reply)
 
     html = render_to_string(
         "tweets/_replies_list.html", {"replies": replies}, request=request
