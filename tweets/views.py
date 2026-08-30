@@ -86,6 +86,18 @@ def _set_display_created_at(tweet):
     tweet.display_created_at = created_date
 
 
+def _post_media_request(request, image):
+    """画像をアップロードするリクエスト"""
+    image.seek(0)
+    post_media_response = requests.post(
+        TWITTER_MEDIA_ENDPOINT,
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        files={"media": image},
+        data={"media_category": "tweet_image"},
+    )
+    return post_media_response
+
+
 @login_required
 def post_tweet(request):
     """ツイートボタンを押した時の処理"""
@@ -94,19 +106,9 @@ def post_tweet(request):
 
     media_ids = []
 
-    def post_media_request(image):
-        image.seek(0)
-        post_media_response = requests.post(
-            TWITTER_MEDIA_ENDPOINT,
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            files={"media": image},
-            data={"media_category": "tweet_image"},
-        )
-        return post_media_response
-
     for image in images_list:
         image_status, image_result = _request_with_token_refresh(
-            request, lambda image=image: post_media_request(image), 200
+            request, lambda image=image: _post_media_request(request, image), 200
         )
         if image_status == "error":
             return JsonResponse(image_result)
