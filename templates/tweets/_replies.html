@@ -30,7 +30,7 @@
   </div>
   <!-- リプライ -->
   <div class="px-5 py-3 flex">
-    <div>
+    <div class="shrink-0">
       <img class="rounded-full" src="{{ reply.author.profile_image_url }}" />
     </div>
     <div class="pl-4">
@@ -56,7 +56,7 @@
   {% if reply.my_reply %}
   <div class="flex items-center ml-18">
     <div class="flex">
-      <div>
+      <div class="shrink-0">
         <img
           class="rounded-full h-10 mr-3"
           src="{{ reply.my_reply.author.profile_image_url }}"
