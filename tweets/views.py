@@ -256,8 +256,8 @@ def save_all_tweets(request):
 
     tweets_list = []
 
-    for tweet in all_tweets_list:
-        tweet_id = int(tweet.get("id"))
+    for tweet_response in all_tweets_list:
+        tweet_id = int(tweet_response.get("id"))
 
         if tweet_id in saved_tweet_ids:
             continue
@@ -265,7 +265,7 @@ def save_all_tweets(request):
         in_reply_to_tweet_id = None
         in_quoted_to_tweet_id = None
 
-        referenced_tweet_list = tweet.get("referenced_tweets")
+        referenced_tweet_list = tweet_response.get("referenced_tweets")
 
         if referenced_tweet_list is not None:
             for referenced_tweet in referenced_tweet_list:
@@ -278,10 +278,10 @@ def save_all_tweets(request):
 
         tweet = Tweet(
             id=tweet_id,
-            author_id=tweet.get("author_id"),
-            text=tweet.get("text"),
-            created_at=tweet.get("created_at"),
-            conversation_id=tweet.get("conversation_id"),
+            author_id=tweet_response.get("author_id"),
+            text=tweet_response.get("text"),
+            created_at=tweet_response.get("created_at"),
+            conversation_id=tweet_response.get("conversation_id"),
             in_reply_to_tweet_id=in_reply_to_tweet_id,
             in_quoted_to_tweet_id=in_quoted_to_tweet_id,
         )
@@ -625,10 +625,11 @@ def _save_replies(request, replies_response_list):
     """
     replies_list = []
     not_saved_user_ids = []
-    all_tweet_ids = set(Tweet.objects.values_list("id", flat=True))
+    saved_all_tweet_ids = set(Tweet.objects.values_list("id", flat=True))
     saved_user_ids = set(User.objects.values_list("id", flat=True))
-    for reply in replies_response_list:
-        author_id = int(reply.get("author_id"))
+    for reply_response in replies_response_list:
+        reply_id = int(reply_response.get("id"))
+        author_id = int(reply_response.get("author_id"))
 
         if author_id not in saved_user_ids:
             not_saved_user_ids.append(author_id)
@@ -636,7 +637,7 @@ def _save_replies(request, replies_response_list):
         in_reply_to_tweet_id = None
         in_quoted_to_tweet_id = None
 
-        referenced_tweet_list = reply.get("referenced_tweets")
+        referenced_tweet_list = reply_response.get("referenced_tweets")
 
         if referenced_tweet_list is not None:
             for referenced_tweet in referenced_tweet_list:
@@ -647,14 +648,13 @@ def _save_replies(request, replies_response_list):
                 elif referenced_tweet_type == "replied_to":
                     in_reply_to_tweet_id = referenced_tweet.get("id")
 
-        reply_id = int(reply.get("id"))
-        if reply_id not in all_tweet_ids:
+        if reply_id not in saved_all_tweet_ids:
             reply = Tweet(
                 id=reply_id,
-                author_id=reply.get("author_id"),
-                text=reply.get("text"),
-                created_at=reply.get("created_at"),
-                conversation_id=reply.get("conversation_id"),
+                author_id=reply_response.get("author_id"),
+                text=reply_response.get("text"),
+                created_at=reply_response.get("created_at"),
+                conversation_id=reply_response.get("conversation_id"),
                 in_reply_to_tweet_id=in_reply_to_tweet_id,
                 in_quoted_to_tweet_id=in_quoted_to_tweet_id,
             )
