@@ -45,7 +45,7 @@
       <div class="grid grid-cols-4 gap-2">
         {% for media in reply.media.all %}
         <img
-          class="rounded-xl aspect-square object-cover w-full"
+          class="rounded-xl aspect-square object-cover w-full hover:cursor-pointer"
           src="{{media.url}}"
         />
         {% endfor %}
@@ -77,7 +77,7 @@
         <div class="grid grid-cols-4 gap-2">
           {% for media in reply.my_reply.media.all %}
           <img
-            class="rounded-xl aspect-square object-cover w-full"
+            class="rounded-xl aspect-square object-cover w-full hover:cursor-pointer"
             src="{{media.url}}"
           />
           {% endfor %}

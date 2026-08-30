@@ -1,9 +1,6 @@
 <div class="border-b-2 border-slate-200 px-5 py-4 flex">
   <div class="shrink-0">
-    <img
-      class="rounded-full"
-      src="{{ tweet.author.profile_image_url }}"
-    />
+    <img class="rounded-full" src="{{ tweet.author.profile_image_url }}" />
   </div>
   <div class="pl-4">
     <div class="flex gap-2 items-center">
@@ -15,7 +12,7 @@
     <div class="grid grid-cols-4 gap-2">
       {% for media in tweet.media.all %}
       <img
-        class="rounded-xl aspect-square object-cover w-full"
+        class="rounded-xl aspect-square object-cover w-full hover:cursor-pointer "
         src="{{media.url}}"
       />
       {% endfor %}
