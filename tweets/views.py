@@ -511,9 +511,11 @@ def save_all_replies(request):
         .aggregate(last_id=Max("id"))["last_id"]
     )
 
-    last_reply_created_at = Tweet.objects.get(id=last_reply_id).created_at
-    last_reply_created_at = timezone.localtime(last_reply_created_at)
-    last_reply_created_at_display = last_reply_created_at.strftime("%Y年%m月%d日")
+    last_reply = Tweet.objects.filter(id=last_reply_id).first()
+    if last_reply:
+        last_reply_created_at = last_reply.created_at
+        last_reply_created_at = timezone.localtime(last_reply_created_at)
+        last_reply_created_at_display = last_reply_created_at.strftime("%Y年%m月%d日")
 
     params = {
         "query": f"to:{request.user.user.username} -is:retweet -from:{request.user.user.username}",
