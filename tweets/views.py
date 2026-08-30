@@ -27,18 +27,11 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def tweets_view(request):
-    my_tweets = list(
-        Tweet.objects.filter(
-            author=request.user.user_id, in_reply_to_tweet_id__isnull=True
-        )
-        .select_related("author")
-        .prefetch_related("media")
-        .order_by("-created_at")
-    )
+    my_tweets = list(Tweet.objects.my_tweets(request.user))
 
     for tweet in my_tweets:
-        _set_display_created_at(tweet)
-        _strip_media_link(tweet)
+        tweet.strip_media_link()
+        tweet.set_display_created_at()
 
     return render(request, "tweets/tweets.html", {"my_tweets": my_tweets})
 
@@ -488,7 +481,7 @@ def post_reply(request):
 
     body = get_reply_result.json()
     created_reply_list = [body.get("data")]
-    created_reply_media_list = body.get("includes",{}).get("media", [])
+    created_reply_media_list = body.get("includes", {}).get("media", [])
 
     save_replies_status, save_replies_result = _save_replies(
         request, created_reply_list, created_reply_media_list
@@ -628,7 +621,7 @@ def save_all_replies(request):
             all_replies_list.extend(replies)
         next_token = body["meta"].get("next_token")
 
-        all_replies_media_list.extend(body.get("includes",{}).get("media", []))
+        all_replies_media_list.extend(body.get("includes", {}).get("media", []))
 
         if not next_token:
             break
