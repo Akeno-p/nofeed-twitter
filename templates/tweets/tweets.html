@@ -313,7 +313,6 @@
     // 画像拡大表示
     $("#tweet img").on("click", function () {
       const imageUrl = $(this).attr("src");
-      console.log(imageUrl);
       $("#img-modal img").attr("src", imageUrl);
       $("#img-modal")[0].showModal();
     });
