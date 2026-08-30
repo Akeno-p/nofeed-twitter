@@ -248,6 +248,10 @@
           $("#replies-list").replaceWith(response.html);
           showSuccessToast("成功");
           $("#get-replies-modal")[0].close();
+        } else if (response.status === "partial") {
+          $("#replies-list").replaceWith(response.html);
+          showSuccessToast(response.message);
+          $("#get-replies-modal")[0].close();
         } else if (response.status === "error") {
           $("#get-replies-modal")[0].close();
           alert(
