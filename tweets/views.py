@@ -458,12 +458,12 @@ def post_reply(request):
     if get_reply_status == "error":
         return JsonResponse(get_reply_result)
 
-    created_reply = get_reply_result.json().get("data")
-
-    created_reply_list = [created_reply]
+    body = get_reply_result.json()
+    created_reply_list = [body.get("data")]
+    created_reply_media_list = body.get("includes",{}).get("media", [])
 
     save_replies_status, save_replies_result = _save_replies(
-        request, created_reply_list
+        request, created_reply_list, created_reply_media_list
     )
 
     if save_replies_status == "error":
@@ -483,6 +483,7 @@ def post_reply(request):
 def save_all_replies(request):
     """リプライ全件取得ボタンを押した時の処理"""
     all_replies_list = []
+    all_replies_media_list = []
     next_token = None
 
     my_tweet_ids = Tweet.objects.filter(
@@ -503,6 +504,8 @@ def save_all_replies(request):
         "query": f"to:{request.user.user.username} -is:retweet -from:{request.user.user.username}",
         "max_results": 100,
         "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+        "expansions": "attachments.media_keys",
+        "media.fields": "url,type,alt_text,width,height,duration_ms",
         "since_id": last_reply_id,
     }
 
@@ -596,12 +599,14 @@ def save_all_replies(request):
             all_replies_list.extend(replies)
         next_token = body["meta"].get("next_token")
 
+        all_replies_media_list.extend(body.get("includes",{}).get("media", []))
+
         if not next_token:
             break
 
     if all_replies_list is not None:
         save_replies_status, save_replies_result = _save_replies(
-            request, all_replies_list
+            request, all_replies_list, all_replies_media_list
         )
 
         if save_replies_status == "error":
@@ -650,7 +655,7 @@ def save_all_replies(request):
     return JsonResponse({"status": status, "message": message, "html": html})
 
 
-def _save_replies(request, replies_response_list):
+def _save_replies(request, replies_response_list, replies_media_response_list):
     """保存したいreplyのレスポンスをリストにして渡すと、渡したreplyが保存される。
 
     戻り値は、
@@ -658,8 +663,13 @@ def _save_replies(request, replies_response_list):
     第二引数にerrorの場合はerror詳細 successの場合はNone
     """
     replies_list = []
+    media_list = []
+    replies_media_list = []
     not_saved_user_ids = []
     saved_all_tweet_ids = set(Tweet.objects.values_list("id", flat=True))
+    saved_all_tweet_media_ids = set(
+        TweetMedia.objects.values_list("media_key", flat=True)
+    )
     saved_user_ids = set(User.objects.values_list("id", flat=True))
     for reply_response in replies_response_list:
         reply_id = int(reply_response.get("id"))
@@ -667,6 +677,10 @@ def _save_replies(request, replies_response_list):
 
         if author_id not in saved_user_ids:
             not_saved_user_ids.append(author_id)
+
+        media_keys = reply_response.get("attachments", {}).get("media_keys", [])
+        for media_key in media_keys:
+            replies_media_list.append({"tweet_id": reply_id, "media_key": media_key})
 
         in_reply_to_tweet_id = None
         in_quoted_to_tweet_id = None
@@ -701,6 +715,29 @@ def _save_replies(request, replies_response_list):
             return save_users_status, save_users_result
 
     Tweet.objects.bulk_create(replies_list)
+
+    for tweet_media in replies_media_response_list:
+        this_tweet_id = None
+        tweet_media_key = tweet_media.get("media_key")
+        if tweet_media_key in saved_all_tweet_media_ids:
+            continue
+
+        for m_k_dict in replies_media_list:
+            if m_k_dict["media_key"] == tweet_media_key:
+                this_tweet_id = m_k_dict["tweet_id"]
+
+        media = TweetMedia(
+            media_key=tweet_media.get("media_key"),
+            tweet_id=this_tweet_id,
+            media_type=tweet_media.get("type"),
+            url=tweet_media.get("url"),
+            alt_text=tweet_media.get("alt_text"),
+            width=tweet_media.get("width"),
+            height=tweet_media.get("height"),
+            duration_ms=tweet_media.get("duration_ms"),
+        )
+        media_list.append(media)
+    TweetMedia.objects.bulk_create(media_list)
 
     return "success", None
 
