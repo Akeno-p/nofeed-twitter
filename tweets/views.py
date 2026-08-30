@@ -218,12 +218,15 @@ def post_tweet(request):
 def save_all_tweets(request):
     """ツイート全件取得ボタンを押した時の処理"""
     all_tweets_list = []
+    all_tweets_media_list = []
     next_token = None
 
     def get_all_tweets():
         params = {
             "max_results": 100,
-            "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+            "post.fields": "created_at,author_id,conversation_id,referenced_tweets,attachments",
+            "expansions": "attachments.media_keys",
+            "media.fields": "url,type,alt_text,width,height,duration_ms",
         }
         if next_token:
             params["pagination_token"] = next_token
@@ -245,6 +248,7 @@ def save_all_tweets(request):
 
         body = result.json()
         all_tweets_list.extend(body["data"])
+        all_tweets_media_list.extend(body.get("includes").get("media", []))
         next_token = body["meta"].get("next_token")
 
         if not next_token:
@@ -253,8 +257,11 @@ def save_all_tweets(request):
     saved_tweet_ids = set(
         Tweet.objects.filter(author=request.user.user_id).values_list("id", flat=True)
     )
+    saved_tweet_media_keys = set(TweetMedia.objects.values_list("media_key", flat=True))
 
     tweets_list = []
+    media_list = []
+    tweets_media_keys = []
 
     for tweet_response in all_tweets_list:
         tweet_id = int(tweet_response.get("id"))
@@ -286,8 +293,35 @@ def save_all_tweets(request):
             in_quoted_to_tweet_id=in_quoted_to_tweet_id,
         )
         tweets_list.append(tweet)
+        media_keys = tweet_response.get("attachments", {}).get("media_keys", [])
+        for media_key in media_keys:
+            tweets_media_keys.append({"tweet_id": tweet_id, "media_key": media_key})
 
     Tweet.objects.bulk_create(tweets_list)
+
+    for tweet_media in all_tweets_media_list:
+        this_tweet_id = None
+        tweet_media_key = tweet_media.get("media_key")
+        if tweet_media_key in saved_tweet_media_keys:
+            continue
+
+        for m_k_dict in tweets_media_keys:
+            if m_k_dict["media_key"] == tweet_media_key:
+                this_tweet_id = m_k_dict["tweet_id"]
+
+        media = TweetMedia(
+            media_key=tweet_media.get("media_key"),
+            tweet_id=this_tweet_id,
+            media_type=tweet_media.get("type"),
+            url=tweet_media.get("url"),
+            alt_text=tweet_media.get("alt_text"),
+            width=tweet_media.get("width"),
+            height=tweet_media.get("height"),
+            duration_ms=tweet_media.get("duration_ms"),
+        )
+        media_list.append(media)
+
+    TweetMedia.objects.bulk_create(media_list)
 
     my_tweets = list(
         Tweet.objects.filter(
