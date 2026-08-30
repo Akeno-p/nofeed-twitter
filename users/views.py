@@ -14,7 +14,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from common.utils import _update_tokens
+from common.utils import update_tokens
 from common.x_api import (
     TWITTER_AUTH_ENDPOINT,
     TWITTER_CLIENT_ID,
@@ -355,7 +355,7 @@ def _register_user_me(request):
     )
 
     if user_info_response.status_code == 401:
-        is_update_tokens = _update_tokens(request)
+        is_update_tokens = update_tokens(request)
 
         if not is_update_tokens:
             return False

@@ -17,7 +17,7 @@ from users.models import Account
 logger = logging.getLogger(__name__)
 
 
-def _update_tokens(request):
+def update_tokens(request):
     """リフレッシュトークンを使って、アクセストークンを新しくする。
 
     成功した場合は True 失敗した場合は Flase  を返す。
@@ -58,7 +58,7 @@ def _update_tokens(request):
     return True
 
 
-def _request_with_token_refresh(request, send_request, success_code):
+def request_with_token_refresh(request, send_request, success_code):
     """リクエストを実行し、401 の場合はトークンを更新して再実行する。
 
     send_request には引数なしで呼べるリクエスト関数を、
@@ -71,7 +71,7 @@ def _request_with_token_refresh(request, send_request, success_code):
     response = send_request()
 
     if response.status_code == 401:
-        if not _update_tokens(request):
+        if not update_tokens(request):
             return "error", {
                 "status": "error",
                 "message": "アクセストークンの更新に失敗しました。",

@@ -10,7 +10,7 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from common.utils import _request_with_token_refresh, _update_tokens
+from common.utils import request_with_token_refresh, update_tokens
 from common.x_api import (
     TWITTER_GET_TWEET_ENDPOINT,
     TWITTER_MEDIA_ENDPOINT,
@@ -97,7 +97,7 @@ def post_tweet(request):
     media_ids = []
 
     for image in images_list:
-        image_status, image_result = _request_with_token_refresh(
+        image_status, image_result = request_with_token_refresh(
             request, lambda image=image: _post_media_request(request, image), 200
         )
         if image_status == "error":
@@ -117,7 +117,7 @@ def post_tweet(request):
         )
         return post_tweet_response
 
-    post_tweet_status, post_tweet_result = _request_with_token_refresh(
+    post_tweet_status, post_tweet_result = request_with_token_refresh(
         request, post_tweet_request, 201
     )
 
@@ -141,7 +141,7 @@ def post_tweet(request):
 
         return get_tweet_response
 
-    get_tweet_status, get_tweet_result = _request_with_token_refresh(
+    get_tweet_status, get_tweet_result = request_with_token_refresh(
         request, get_tweet, 200
     )
 
@@ -228,7 +228,7 @@ def save_all_tweets(request):
         return response
 
     while True:
-        status, result = _request_with_token_refresh(request, get_all_tweets, 200)
+        status, result = request_with_token_refresh(request, get_all_tweets, 200)
 
         if status == "error":
             return JsonResponse(result)
@@ -423,7 +423,7 @@ def post_reply(request):
     media_ids = []
 
     for image in images_list:
-        image_status, image_result = _request_with_token_refresh(
+        image_status, image_result = request_with_token_refresh(
             request, lambda image=image: _post_media_request(request, image), 200
         )
         if image_status == "error":
@@ -443,7 +443,7 @@ def post_reply(request):
         )
         return post_reply_response
 
-    post_reply_status, post_reply_result = _request_with_token_refresh(
+    post_reply_status, post_reply_result = request_with_token_refresh(
         request, post_reply_request, 201
     )
 
@@ -464,7 +464,7 @@ def post_reply(request):
         )
         return get_reply_response
 
-    get_reply_status, get_reply_result = _request_with_token_refresh(
+    get_reply_status, get_reply_result = request_with_token_refresh(
         request, get_reply, 200
     )
 
@@ -540,7 +540,7 @@ def save_all_replies(request):
         response = get_replies()
 
         if response.status_code == 401:
-            if not _update_tokens(request):
+            if not update_tokens(request):
                 return JsonResponse(
                     {
                         "status": "error",
@@ -560,7 +560,7 @@ def save_all_replies(request):
                 response = get_replies()
 
                 if response.status_code == 401:
-                    if not _update_tokens(request):
+                    if not update_tokens(request):
                         return JsonResponse(
                             {
                                 "status": "error",
@@ -770,7 +770,7 @@ def _get_users(request, user_ids):
         )
         return users_response
 
-    return _request_with_token_refresh(request, users_request, 200)
+    return request_with_token_refresh(request, users_request, 200)
 
 
 def _save_users(request, user_ids):
