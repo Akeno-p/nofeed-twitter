@@ -138,6 +138,36 @@
 
 <script>
   $(document).ready(() => {
+    // 画像系
+    const replyImages = {};
+    $("[data-reply-image]").on("change", function () {
+      const replyId = $(this).closest("[data-image-form]").data("image-form");
+      replyImages[replyId] ??= [];
+      const imageList = replyImages[replyId];
+
+      const file = $(this)[0].files[0];
+      const imageUrl = URL.createObjectURL(file);
+
+      imageList.push({ url: imageUrl, file: file });
+      $(this).val("");
+      const $form = $(this).closest("[data-image-form]");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
+    });
+
+    $("[data-image-number] > button").on("click", function () {
+      const dataImageNumber = $(this)
+        .closest("[data-image-number]")
+        .data("image-number");
+      const replyId = $(this).closest("[data-image-form]").data("image-form");
+
+      const imageList = replyImages[replyId];
+      imageList.splice(dataImageNumber, 1);
+      const $form = $(this).closest("[data-image-form]");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
+    });
+
     $(document).on("click", "[data-in-reply-to-text]", function () {
       $("#in-reply-to-text-modal")[0].showModal();
       const tweetText = $(this).data("in-reply-to-text");
@@ -173,10 +203,20 @@
         return;
       }
 
+      const formData = new FormData();
+      formData.append("replyText", replyText);
+      formData.append("replyId", replyId);
+      const imageList = replyImages[replyId];
+      for (const image of imageList) {
+        formData.append("images", image.file);
+      }
+
       $.ajax({
         url: "{% url 'post_reply' %}",
         method: "POST",
-        data: { replyText: replyText, replyId: replyId },
+        data: formData,
+        processData: false,
+        contentType: false,
       }).done((response) => {
         if (response.status === "success") {
           showSuccessToast("成功しました");
@@ -217,36 +257,6 @@
           alert("想定外のエラーが発生しました。");
         }
       });
-    });
-
-    // 画像系
-    const replyImages = {};
-    $("[data-reply-image]").on("change", function () {
-      const replyId = $(this).closest("[data-image-form]").data("image-form");
-      replyImages[replyId] ??= [];
-      const imageList = replyImages[replyId];
-
-      const file = $(this)[0].files[0];
-      const imageUrl = URL.createObjectURL(file);
-
-      imageList.push({ url: imageUrl, file: file });
-      $(this).val("");
-      const $form = $(this).closest("[data-image-form]");
-      renderImagePreviews(imageList, $form);
-      updateImageInputState(imageList, $form);
-    });
-
-    $("[data-image-number] > button").on("click", function () {
-      const dataImageNumber = $(this)
-        .closest("[data-image-number]")
-        .data("image-number");
-      const replyId = $(this).closest("[data-image-form]").data("image-form");
-
-      const imageList = replyImages[replyId];
-      imageList.splice(dataImageNumber, 1);
-      const $form = $(this).closest("[data-image-form]");
-      renderImagePreviews(imageList, $form);
-      updateImageInputState(imageList, $form);
     });
   });
 </script>

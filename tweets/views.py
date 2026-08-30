@@ -420,15 +420,28 @@ def post_reply(request):
     """リプライ返信ボタンを押した時の処理"""
     reply_text = request.POST.get("replyText")
     reply_id = request.POST.get("replyId")
+    images_list = request.FILES.getlist("images")
+
+    media_ids = []
+
+    for image in images_list:
+        image_status, image_result = _request_with_token_refresh(
+            request, lambda image=image: _post_media_request(request, image), 200
+        )
+        if image_status == "error":
+            return JsonResponse(image_result)
+
+        media_ids.append(image_result.json()["data"]["id"])
+
+    payload = {"text": reply_text, "reply": {"in_reply_to_tweet_id": reply_id}}
+    if media_ids:
+        payload["media"] = {"media_ids": media_ids}
 
     def post_reply_request():
         post_reply_response = requests.post(
             TWITTER_TWEET_ENDPOINT,
             headers={"Authorization": f"Bearer {request.user.access_token}"},
-            json={
-                "text": reply_text,
-                "reply": {"in_reply_to_tweet_id": reply_id},
-            },
+            json=payload,
         )
         return post_reply_response
 
@@ -447,6 +460,8 @@ def post_reply(request):
             headers={"Authorization": f"Bearer {request.user.access_token}"},
             params={
                 "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+                "expansions": "attachments.media_keys",
+                "media.fields": "url,type,alt_text,width,height,duration_ms",
             },
         )
         return get_reply_response
