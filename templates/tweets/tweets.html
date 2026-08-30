@@ -1,1 +1,299 @@
-<p>仮ページです。あとで直す。</p>
+{% extends "base_home.html" %} {% block home_body %}
+<div
+  class="border-b-2 border-slate-300 h-1/12 px-8 flex items-center justify-between"
+>
+  <h2 class="text-3xl font-bold">ツイート</h2>
+  <button
+    class="bg-slate-100 text-slate-700 border border-slate-500 rounded-3xl ml-2 p-2 hover:bg-slate-700 hover:text-slate-100 cursor-pointer"
+    id="open-get-all-tweets-modal"
+  >
+    <div class="flex justify-center items-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-8"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0-3.75-3.75M17.25 21 21 17.25"
+        />
+      </svg>
+      <p class="text-lg">ツイート取得</p>
+    </div>
+  </button>
+</div>
+<div class="h-11/12 overflow-y-auto">
+  <div class="p-8">
+    <div class="flex">
+      <div>
+        <img
+          class="rounded-full"
+          src="{{ user.user.profile_image_url }}"
+          alt="アイコン"
+        />
+      </div>
+      <div
+        data-image-form
+        class="ml-4 flex-1 flex flex-col mt-2 border-b-2 border-slate-500"
+      >
+        <textarea
+          id="tweet-text"
+          class="text-2xl field-sizing-content resize-none focus:outline-none"
+          placeholder="なにしてる？"
+        ></textarea>
+        <div class="p-1 gap-4 grid grid-cols-4">
+          <!-- prettier-ignore -->
+          {% for image_number in "0123" %}
+            {% include "tweets/_image_preview.html" %}
+          {% endfor %}
+        </div>
+        <label
+          class="cursor-pointer self-start text-slate-500 hover:text-slate-700"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+            />
+          </svg>
+          <input id="tweet-image" class="hidden" type="file" accept="image/*" />
+        </label>
+      </div>
+    </div>
+    <div class="flex justify-end mt-3">
+      <div id="char-counter" class="flex items-center text-slate-400">
+        <p id="char-count">0</p>
+        <p>/140</p>
+      </div>
+      <button
+        class="bg-slate-700 text-slate-100 w-44 rounded-lg p-3 ml-2 hover:bg-slate-800 cursor-pointer"
+        id="tweet-button"
+      >
+        <div class="flex justify-center items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+            />
+          </svg>
+          <p>ツイート</p>
+        </div>
+      </button>
+    </div>
+  </div>
+  <div class="flex justify-between px-4 pb-2 border-b-2 border-slate-300">
+    <p class="text-slate-500 text-lg">自分のツイート</p>
+    <p class="text-slate-400">新しい順</p>
+  </div>
+  {% include "tweets/_tweets_list.html" %}
+</div>
+
+<!-- ツイート全件取得モーダル -->
+<dialog
+  class="m-auto border-2 border-slate-300 rounded-2xl w-xl focus:outline-none"
+  id="get-all-tweets-modal"
+>
+  <div class="flex flex-col p-2 bg-slate-50 text-slate-700">
+    <div>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-8 text-slate-500 hover:text-slate-700 cursor-pointer"
+        id="close-get-all-tweets-modal"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M6 18 18 6M6 6l12 12"
+        />
+      </svg>
+    </div>
+    <div class="flex flex-col items-center justify-center p-5">
+      <div class="self-center rounded-2xl bg-slate-200 p-2 mb-4">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-10"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+          />
+        </svg>
+      </div>
+      <p class="text-xl">自分のツイートを全件更新してもよろしいですか？</p>
+      <p class="text-lg">※ ツイートの取得1件につき約0.7円かかります。</p>
+      <button
+        class="bg-slate-700 text-slate-100 text-lg w-52 rounded-lg p-2 mt-6 hover:bg-slate-800 cursor-pointer"
+        id="get-all-tweets-button"
+      >
+        <div class="flex justify-center items-center gap-2" id="">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+            />
+          </svg>
+          <p>取得</p>
+        </div>
+      </button>
+    </div>
+  </div>
+</dialog>
+
+{% include "tweets/_image_modal.html" %}
+
+<script>
+  $(document).ready(() => {
+    // ツイート文章入力欄 文字数表示
+    $("#tweet-text").on("input", () => {
+      let charCount = $("#tweet-text").val().length;
+      $("#char-count").text(charCount);
+      if (charCount > 140) {
+        $("#char-counter").removeClass("text-slate-400");
+        $("#char-counter").addClass("text-red-400");
+      } else {
+        $("#char-counter").removeClass("text-red-400");
+        $("#char-counter").addClass("text-slate-400");
+      }
+    });
+
+    // 画像系
+    const imageList = [];
+    const $form = $("#tweet-image").closest("[data-image-form]");
+    $("#tweet-image").on("change", () => {
+      const file = $("#tweet-image")[0].files[0];
+      const imageUrl = URL.createObjectURL(file);
+
+      imageList.push({ url: imageUrl, file: file });
+      $("#tweet-image").val("");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
+    });
+
+    $(`[data-image-number] > button`).on("click", function () {
+      const dataImageNumber = $(this)
+        .closest("[data-image-number]")
+        .data("image-number");
+
+      imageList.splice(dataImageNumber, 1);
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
+    });
+
+    // ツイート系
+    $("#tweet-button").on("click", () => {
+      const tweetText = $("#tweet-text").val();
+      if (tweetText === "") {
+        showToast("ツイートの文章を入力してください。");
+        return;
+      }
+
+      if (tweetText.length > 140) {
+        showToast("ツイートの文字数は140文字以内で入力してください");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("tweetText", tweetText);
+      for (const image of imageList) {
+        formData.append("images", image.file);
+      }
+
+      $.ajax({
+        url: "{% url 'post_tweet' %}",
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+      }).done((response) => {
+        if (response.status === "success") {
+          showSuccessToast("ツイートしました");
+          $("#tweet-text").val("");
+          imageList.length = 0;
+          renderImagePreviews(imageList, $form);
+          updateImageInputState(imageList, $form);
+          $("#tweet").prepend(response.html);
+        } else if (response.status === "error") {
+          alert(
+            "エラーコード" + response.error_code + "： " + response.message,
+          );
+        }
+      });
+    });
+
+    // ツイート全件取得系
+    $("#open-get-all-tweets-modal").on("click", () => {
+      $("#get-all-tweets-modal")[0].showModal();
+      $("#settings-popover").fadeOut();
+    });
+    $("#close-get-all-tweets-modal").on("click", () => {
+      $("#get-all-tweets-modal")[0].close();
+    });
+    $("#get-all-tweets-button").on("click", () => {
+      $.ajax({
+        url: "{% url 'save_all_tweets' %}",
+        method: "POST",
+      }).done((response) => {
+        if (response.status === "success") {
+          $("#tweets-list").replaceWith(response.html);
+          showSuccessToast("成功");
+          $("#get-all-tweets-modal")[0].close();
+        } else if (response.status === "error") {
+          $("#get-all-tweets-modal")[0].close();
+          alert(
+            "エラーコード" + response.error_code + "： " + response.message,
+          );
+        } else {
+          alert("想定外のエラーが発生しました。");
+        }
+      });
+    });
+
+    // 画像拡大表示
+    $("#tweet img").on("click", function () {
+      const imageUrl = $(this).attr("src");
+      $("#img-modal img").attr("src", imageUrl);
+      $("#img-modal")[0].showModal();
+    });
+    $("#img-modal button").on("click", () => {
+      $("#img-modal")[0].close();
+    });
+  });
+</script>
+{% endblock home_body %}

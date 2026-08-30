@@ -1,0 +1,168 @@
+<div
+  class="px-4 py-4 border-b-2 border-slate-200"
+  data-reply-item="{{reply.id}}"
+>
+  <div
+    class="inline-flex items-center text-slate-500 hover:text-slate-500 hover:border-b border-slate-400 cursor-pointer"
+    data-in-reply-to-text="{{reply.in_reply_to_tweet_text}}"
+    data-media-url-list="{{reply.in_reply_to_tweet_media_list}}"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      class="size-6 mr-2"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+      />
+    </svg>
+    <p>
+      あなたのツイート
+      <!-- prettier-ignore -->
+      「 {{ reply.in_reply_to_tweet_text|truncatechars:21}} 」
+          に対しての返信
+    </p>
+  </div>
+  <!-- リプライ -->
+  <div class="px-5 py-3 flex">
+    <div class="shrink-0">
+      <img class="rounded-full" src="{{ reply.author.profile_image_url }}" />
+    </div>
+    <div class="pl-4">
+      <div class="flex gap-2 items-center">
+        <p class="font-semibold text-lg">{{ reply.author.name }}</p>
+        <p class="font-light text-slate-500">@{{ reply.author.username }}</p>
+        <p class="font-light text-slate-500">
+          ・{{ reply.display_created_at }}
+        </p>
+      </div>
+      <p class="my-1 text-lg whitespace-pre-wrap">{{ reply.text }}</p>
+      <div data-tweet-media class="grid grid-cols-4 gap-2">
+        {% for media in reply.media.all %}
+        <img
+          class="rounded-xl aspect-square object-cover w-full hover:cursor-pointer"
+          src="{{media.url}}"
+        />
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <!-- リプライへの返信 -->
+  {% if reply.my_reply %}
+  <div class="flex items-center ml-18">
+    <div class="flex">
+      <div class="shrink-0">
+        <img
+          class="rounded-full h-10 mr-3"
+          src="{{ reply.my_reply.author.profile_image_url }}"
+        />
+      </div>
+      <div>
+        <div class="flex gap-2 items-center">
+          <p class="font-semibold text-lg">{{ reply.my_reply.author.name }}</p>
+          <p class="font-light text-slate-500">
+            @{{ reply.my_reply.author.username }}
+          </p>
+          <p class="font-light text-slate-500">
+            ・{{ reply.my_reply.display_created_at }}
+          </p>
+        </div>
+        <!-- prettier-ignore -->
+        <p class="text-lg whitespace-pre-wrap">{{ reply.my_reply.display_text }}</p>
+        <div data-tweet-media class="grid grid-cols-4 gap-2">
+          {% for media in reply.my_reply.media.all %}
+          <img
+            class="rounded-xl aspect-square object-cover w-full hover:cursor-pointer"
+            src="{{media.url}}"
+          />
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- リプライ入力欄 -->
+  {% else %}
+  <div>
+    <div class="flex ml-18">
+      <img
+        class="rounded-full h-10 mr-3"
+        src="{{ user.user.profile_image_url }}"
+      />
+      <div
+        data-image-form="{{reply.id}}"
+        class="flex flex-col flex-1 border-b-2 border-slate-500"
+      >
+        <textarea
+          data-reply-text="{{reply.id}}"
+          class="text-lg w-full resize-none field-sizing-content focus:outline-none"
+          placeholder="@{{reply.author.username}}に対しての返信を入力..."
+        ></textarea>
+        <div class="p-1 gap-4 grid grid-cols-4">
+          <!-- prettier-ignore -->
+          {% for image_number in "0123" %}
+            {% include "tweets/_image_preview.html" %}
+          {% endfor %}
+        </div>
+        <label
+          class="cursor-pointer self-start text-slate-500 hover:text-slate-700"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+            />
+          </svg>
+          <input data-reply-image class="hidden" type="file" accept="image/*" />
+        </label>
+      </div>
+    </div>
+
+    <div class="flex justify-end mt-2">
+      <!-- 入力数カウンター -->
+      <div
+        data-reply-char-counter="{{reply.id}}"
+        class="flex items-center text-slate-400"
+      >
+        <p data-reply-char-count="{{reply.id}}">0</p>
+        <p>/140</p>
+      </div>
+      <!-- 送信ボタン -->
+      <button
+        class="bg-slate-700 text-slate-100 w-32 rounded-lg ml-2 p-2 hover:bg-slate-800 cursor-pointer"
+        data-reply-button="{{reply.id}}"
+      >
+        <div class="flex justify-center items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+            />
+          </svg>
+          <p>返信</p>
+        </div>
+      </button>
+    </div>
+  </div>
+  {% endif %}
+</div>

@@ -1,0 +1,21 @@
+<div class="border-b-2 border-slate-200 px-5 py-4 flex">
+  <div class="shrink-0">
+    <img class="rounded-full" src="{{ tweet.author.profile_image_url }}" />
+  </div>
+  <div class="pl-4">
+    <div class="flex gap-2 items-center">
+      <p class="font-semibold text-lg">{{ tweet.author.name }}</p>
+      <p class="font-light text-slate-500">@{{ tweet.author.username }}</p>
+      <p class="font-light text-slate-500">・{{ tweet.display_created_at }}</p>
+    </div>
+    <p class="my-1 text-lg whitespace-pre-wrap">{{ tweet.text }}</p>
+    <div class="grid grid-cols-4 gap-2">
+      {% for media in tweet.media.all %}
+      <img
+        class="rounded-xl aspect-square object-cover w-full hover:cursor-pointer "
+        src="{{media.url}}"
+      />
+      {% endfor %}
+    </div>
+  </div>
+</div>

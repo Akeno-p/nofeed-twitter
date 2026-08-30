@@ -1,0 +1,344 @@
+{% extends "base.html" %} {% block content %}
+<div class="h-screen flex flex-row">
+  <div class="w-80 border-r-2 border-slate-300 flex flex-col px-6 pt-6">
+    <h1 class="text-3xl font-bold text-slate-700 my-4">nofeed-twitter</h1>
+    <div class="flex flex-col flex-1 gap-3 mt-4" id="sidebar">
+      <div
+        class="flex flex-row items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+        data-url="{% url 'tweets' %}"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-8"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+          />
+        </svg>
+        <p class="text-xl">ツイート</p>
+      </div>
+      <div
+        class="flex flex-row items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+        data-url="{% url 'replies' %}"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-8"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+          />
+        </svg>
+        <p class="text-xl">リプライ</p>
+      </div>
+      <div
+        class="flex flex-row items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+        data-url="{% url 'dm' %}"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-8"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
+          />
+        </svg>
+        <p class="text-xl">DM</p>
+      </div>
+      <div
+        class="flex flex-row items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+        data-url="{% url 'api_usage' %}"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-8"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="m9 7.5 3 4.5m0 0 3-4.5M12 12v5.25M15 12H9m6 3H9m12-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+          />
+        </svg>
+        <p class="text-xl">API利用料金</p>
+      </div>
+      <button
+        class="bg-slate-700 text-slate-100 w-full rounded-lg p-3 my-4 hover:bg-slate-800 cursor-pointer"
+        id="open-tweet-modal-button"
+      >
+        <div class="flex justify-center items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+            />
+          </svg>
+          <p>ツイート</p>
+        </div>
+      </button>
+    </div>
+    <div class="border-t-2 py-6 border-slate-300 flex">
+      <img
+        class="rounded-full mr-3"
+        src="{{ user.user.profile_image_url }}"
+        alt="自分のプロフィールアイコン"
+      />
+      <div>
+        <p class="text-xl font-semibold">{{ user.user.name }}</p>
+        <p class="font-light text-slate-500">@{{ user.user.username }}</p>
+      </div>
+      <div class="flex flex-1 items-center justify-end mr-1">
+        <div class="relative">
+          <div
+            class="hidden text-lg bg-white text-slate-500 absolute rounded-lg p-2 bottom-full -right-30 mb-2 w-80 border-2 border-slate-300"
+            id="settings-popover"
+          >
+            <div
+              class="p-2 rounded-lg hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+            >
+              <p>ログアウト</p>
+            </div>
+          </div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-9 text-slate-500 cursor-pointer hover:text-slate-800"
+            id="settings-button"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="flex-1">{% block home_body %} {% endblock home_body %}</div>
+</div>
+
+<!-- ツイートモーダル -->
+<dialog
+  class="m-auto border-2 border-slate-300 rounded-2xl w-3xl focus:outline-none"
+  id="tweet-modal"
+>
+  <div class="flex flex-col p-2 bg-slate-50 text-slate-700">
+    <div>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-8 text-slate-500 hover:text-slate-700 cursor-pointer"
+        id="close-tweet-modal-button"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M6 18 18 6M6 6l12 12"
+        />
+      </svg>
+    </div>
+    <div class="flex p-2 mt-4">
+      <div>
+        <img
+          class="rounded-full"
+          src="{{ user.user.profile_image_url }}"
+          alt="アイコン"
+        />
+      </div>
+      <div class="p-2 my-1 flex-1 rounded-2xl">
+        <textarea
+          id="tweet-modal-text"
+          class="block text-xl min-h-[4lh] field-sizing-content resize-none focus:outline-none"
+          placeholder="なにしてる？"
+        ></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end">
+      <div
+        id="tweet-modal-char-counter"
+        class="flex items-center text-slate-400"
+      >
+        <p id="tweet-modal-char-count">0</p>
+        <p>/140</p>
+      </div>
+      <button
+        class="bg-slate-700 text-slate-100 w-38 rounded-lg ml-2 p-2 hover:bg-slate-800 cursor-pointer"
+        id="tweet-modal-button"
+      >
+        <div class="flex justify-center items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+            />
+          </svg>
+          <p>ツイート</p>
+        </div>
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<!-- トースト -->
+<div
+  id="toast"
+  class="hidden text-slate-100 px-8 py-4 rounded-lg fixed bottom-8 left-1/2 -translate-x-1/2"
+>
+  <p id="toast-message" class="text-xl"></p>
+</div>
+
+<script>
+  $(document).ready(() => {
+    // サイドバーの処理
+    const pathName = location.pathname;
+    $(`#sidebar [data-url="${pathName}"]`)
+      .removeClass("text-slate-500")
+      .addClass("bg-slate-200 text-slate-700");
+    $("#sidebar [data-url]").on("click", function () {
+      location.href = $(this).data("url");
+    });
+
+    // ツイートモーダルの処理
+    $("#open-tweet-modal-button").on("click", () => {
+      $("#tweet-modal")[0].showModal();
+    });
+    $("#close-tweet-modal-button").on("click", () => {
+      $("#tweet-modal")[0].close();
+      $("#tweet-modal-text").val("");
+    });
+    $("#tweet-modal-text").on("input", () => {
+      let tweetModalCharCount = $("#tweet-modal-text").val().length;
+      $("#tweet-modal-char-count").text(tweetModalCharCount);
+      if (tweetModalCharCount > 140) {
+        $("#tweet-modal-char-counter").removeClass("text-slate-400");
+        $("#tweet-modal-char-counter").addClass("text-red-400");
+      } else {
+        $("#tweet-modal-char-counter").removeClass("text-red-400");
+        $("#tweet-modal-char-counter").addClass("text-slate-400");
+      }
+    });
+    $("#tweet-modal-button").on("click", () => {
+      const tweetText = $("#tweet-modal-text").val();
+      if (tweetText === "") {
+        showToast("ツイートの文章を入力してください。");
+        return;
+      }
+      if (tweetText.length > 140) {
+        showToast("ツイートの文字数は140文字以内で入力してください");
+        return;
+      }
+      $.ajax({
+        url: "{% url 'post_tweet' %}",
+        method: "POST",
+        data: { tweetText: tweetText },
+      }).done((response) => {
+        if (response.status === "success") {
+          showSuccessToast("ツイートしました");
+          $("#tweet-modal")[0].close();
+          $("#tweet-modal-text").val("");
+          $("#tweet-list").prepend(response.html);
+        } else if (response.status === "error") {
+          alert(
+            "エラーコード" + response.error_code + "： " + response.message,
+          );
+        }
+      });
+    });
+    // 設定系
+    $("#settings-button").on("click", () => {
+      if ($("#settings-popover").is(":visible")) {
+        $("#settings-popover").fadeOut();
+      } else {
+        $("#settings-popover").fadeIn();
+      }
+    });
+  });
+</script>
+
+<script>
+  // 他ページからも呼ぶものは$(document).readyの外に出す
+  // トースト通知
+  let toastTimeoutId;
+  const showToast = (message, colorClass = "bg-slate-700") => {
+    $("#toast-message").text(message);
+    $("#toast")
+      .removeClass("bg-slate-700 bg-sky-600 bg-red-600")
+      .addClass(colorClass)
+      .fadeIn();
+
+    clearTimeout(toastTimeoutId);
+    toastTimeoutId = setTimeout(() => {
+      $("#toast").fadeOut();
+    }, 3000);
+  };
+
+  const showSuccessToast = (message) => showToast(message, "bg-sky-600");
+  const showErrorToast = (message) => showToast(message, "bg-red-600");
+
+  // 画像系
+  const renderImagePreviews = (imageList, $form) => {
+    $form.find("[data-image-number]").addClass("hidden");
+    $form.find("[data-image-number]").removeAttr("src");
+    for (const [index, image] of imageList.entries()) {
+      $form.find(`[data-image-number="${index}"]`).removeClass("hidden");
+      $form.find(`[data-image-number="${index}"] > img`).attr("src", image.url);
+    }
+  };
+
+  const updateImageInputState = (imageList, $form) => {
+    const isFull = imageList.length >= 4;
+    $form.find("input[type=file]").prop("disabled", isFull);
+    $form.find("label").toggleClass("opacity-40 cursor-not-allowed", isFull);
+    $form.find("label").toggleClass("cursor-pointer", !isFull);
+  };
+</script>
+{% endblock content %}

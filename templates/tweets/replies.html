@@ -1,0 +1,305 @@
+<!-- prettier-ignore -->
+{% extends "base_home.html" %}
+{% block home_body %}
+<div
+  class="border-b-2 border-slate-300 h-1/12 px-8 flex items-center justify-between"
+>
+  <h2 class="text-3xl font-bold">リプライ</h2>
+  <button
+    class="bg-slate-100 text-slate-700 border border-slate-500 rounded-3xl ml-2 p-2 hover:bg-slate-700 hover:text-slate-100 cursor-pointer"
+    id="open-get-replies-modal"
+  >
+    <div class="flex justify-center items-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-8"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0-3.75-3.75M17.25 21 21 17.25"
+        />
+      </svg>
+      <p class="text-lg">リプライ取得</p>
+    </div>
+  </button>
+</div>
+<div class="h-11/12 overflow-y-auto">
+  <!-- prettier-ignore -->
+  {% include "tweets/_replies_list.html" %}
+</div>
+<!-- リプライ元ツイート確認モーダル -->
+<dialog
+  class="m-auto border-2 border-slate-300 rounded-2xl w-2xl p-2 bg-slate-50 text-slate-700 focus:outline-none"
+  id="in-reply-to-text-modal"
+>
+  <div>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      class="size-8 text-slate-500 hover:text-slate-700 cursor-pointer"
+      id="close-in-reply-to-text-modal-button"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M6 18 18 6M6 6l12 12"
+      />
+    </svg>
+  </div>
+  <div class="flex m-2">
+    <div class="shrink-0 mr-3">
+      <img
+        class="rounded-full"
+        src="{{ user.user.profile_image_url }}"
+        alt="アイコン"
+      />
+    </div>
+    <div class="flex-1 rounded-2xl">
+      <p class="whitespace-pre-wrap text-lg" id="tweet-text"></p>
+      <div data-tweet-media class="grid grid-cols-2 gap-2 mt-2">
+        <img
+          data-parent-media-url="0"
+          class="rounded-xl aspect-square object-cover w-full hidden hover:cursor-pointer"
+        />
+        <img
+          data-parent-media-url="1"
+          class="rounded-xl aspect-square object-cover w-full hidden hover:cursor-pointer"
+        />
+        <img
+          data-parent-media-url="2"
+          class="rounded-xl aspect-square object-cover w-full hidden hover:cursor-pointer"
+        />
+        <img
+          data-parent-media-url="3"
+          class="rounded-xl aspect-square object-cover w-full hidden hover:cursor-pointer"
+        />
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- リプライ全件取得モーダル -->
+<dialog
+  class="m-auto border-2 border-slate-300 rounded-2xl w-xl focus:outline-none"
+  id="get-replies-modal"
+>
+  <div class="flex flex-col p-2 bg-slate-50 text-slate-700">
+    <div>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-8 text-slate-500 hover:text-slate-700 cursor-pointer"
+        id="close-get-replies-modal"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M6 18 18 6M6 6l12 12"
+        />
+      </svg>
+    </div>
+    <div class="flex flex-col items-center justify-center p-5">
+      <div class="self-center rounded-2xl bg-slate-200 p-2 mb-4">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-10"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+          />
+        </svg>
+      </div>
+      <p class="text-xl">未取得のリプライを全件してもよろしいですか？</p>
+      <p class="text-lg">※ リプライの取得1件につき約0.7円かかります。</p>
+      <button
+        class="bg-slate-700 text-slate-100 text-lg w-52 rounded-lg p-2 mt-6 hover:bg-slate-800 cursor-pointer"
+        id="get-replies-button"
+      >
+        <div class="flex justify-center items-center gap-2" id="">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+            />
+          </svg>
+          <p>取得</p>
+        </div>
+      </button>
+    </div>
+  </div>
+</dialog>
+
+{% include "tweets/_image_modal.html" %}
+
+<script>
+  $(document).ready(() => {
+    // 画像系
+    const replyImages = {};
+    $("[data-reply-image]").on("change", function () {
+      const replyId = $(this).closest("[data-image-form]").data("image-form");
+      replyImages[replyId] ??= [];
+      const imageList = replyImages[replyId];
+
+      const file = $(this)[0].files[0];
+      const imageUrl = URL.createObjectURL(file);
+
+      imageList.push({ url: imageUrl, file: file });
+      $(this).val("");
+      const $form = $(this).closest("[data-image-form]");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
+    });
+
+    $("[data-image-number] > button").on("click", function () {
+      const dataImageNumber = $(this)
+        .closest("[data-image-number]")
+        .data("image-number");
+      const replyId = $(this).closest("[data-image-form]").data("image-form");
+
+      const imageList = replyImages[replyId];
+      imageList.splice(dataImageNumber, 1);
+      const $form = $(this).closest("[data-image-form]");
+      renderImagePreviews(imageList, $form);
+      updateImageInputState(imageList, $form);
+    });
+
+    $(document).on("click", "[data-in-reply-to-text]", function () {
+      $("#in-reply-to-text-modal")[0].showModal();
+      const tweetText = $(this).data("in-reply-to-text");
+      $("#tweet-text").text(tweetText);
+
+      const mediaUrls = $(this).data("media-url-list");
+      $("[data-parent-media-url]").addClass("hidden");
+      for (const [index, mediaUrl] of mediaUrls.entries()) {
+        $(`[data-parent-media-url="${index}"]`)
+          .removeClass("hidden")
+          .attr("src", mediaUrl);
+      }
+    });
+
+    $("#close-in-reply-to-text-modal-button").on("click", () => {
+      $("#in-reply-to-text-modal")[0].close();
+    });
+
+    $(document).on("input", "[data-reply-text]", function () {
+      const replyId = $(this).data("reply-text");
+      const charCount = $(this).val().length;
+      $(`[data-reply-char-count=${replyId}]`).text(charCount);
+      if (charCount > 140) {
+        $(`[data-reply-char-counter=${replyId}]`).addClass("text-red-400");
+        $(`[data-reply-char-counter=${replyId}]`).removeClass("text-slate-400");
+      } else {
+        $(`[data-reply-char-counter=${replyId}]`).addClass("text-slate-400");
+        $(`[data-reply-char-counter=${replyId}]`).removeClass("text-red-400");
+      }
+    });
+
+    $(document).on("click", "[data-reply-button]", function () {
+      const replyId = $(this).data("reply-button");
+      const replyText = $(`[data-reply-text=${replyId}]`).val();
+      if (replyText.length > 140) {
+        showToast("ツイートの文字数は140文字以内で入力してください");
+        return;
+      }
+      if (replyText == "") {
+        showToast("ツイートの文章を入力してください。");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("replyText", replyText);
+      formData.append("replyId", replyId);
+      const imageList = replyImages[replyId];
+      for (const image of imageList) {
+        formData.append("images", image.file);
+      }
+
+      $.ajax({
+        url: "{% url 'post_reply' %}",
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+      }).done((response) => {
+        if (response.status === "success") {
+          showSuccessToast("成功しました");
+          $(`[data-reply-item=${replyId}]`).replaceWith(response.html);
+        } else if (response.status === "error") {
+          alert(
+            "エラーコード" + response.error_code + "： " + response.message,
+          );
+        } else {
+          alert("想定外のエラーが発生しました。");
+        }
+      });
+    });
+
+    // リプライ取得系
+    $("#open-get-replies-modal").on("click", () => {
+      $("#get-replies-modal")[0].showModal();
+      $("#settings-popover").fadeOut();
+    });
+    $("#close-get-replies-modal").on("click", () => {
+      $("#get-replies-modal")[0].close();
+    });
+    $("#get-replies-button").on("click", () => {
+      $.ajax({
+        url: "{% url 'save_all_replies' %}",
+        method: "POST",
+      }).done((response) => {
+        if (response.status === "success") {
+          $("#replies-list").replaceWith(response.html);
+          showSuccessToast("成功");
+          $("#get-replies-modal")[0].close();
+        } else if (response.status === "partial") {
+          $("#replies-list").replaceWith(response.html);
+          showSuccessToast(response.message);
+          $("#get-replies-modal")[0].close();
+        } else if (response.status === "error") {
+          $("#get-replies-modal")[0].close();
+          alert(
+            "エラーコード" + response.error_code + "： " + response.message,
+          );
+        } else {
+          alert("想定外のエラーが発生しました。");
+        }
+      });
+    });
+
+    // 画像拡大表示
+    $("[data-tweet-media] img").on("click", function() {
+      const imageUrl = $(this).attr("src");
+      $("#img-modal img").attr("src", imageUrl);
+      $("#img-modal")[0].showModal();
+    });
+    $("#img-modal button").on("click", () => {
+      $("#img-modal")[0].close();
+    });
+  });
+</script>
+{% endblock home_body %}

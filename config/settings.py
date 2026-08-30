@@ -10,8 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -136,10 +137,3 @@ AUTH_USER_MODEL = "users.Account"
 
 # ログインされてないかったらloginページにリダイレクト
 LOGIN_URL = "login"
-
-# Twitter(X)API 連携用のデータ
-TWITTER_CLIENT_ID = os.environ["TWITTER_CLIENT_ID"]
-TWITTER_CLIENT_SECRET = os.environ["TWITTER_CLIENT_SECRET"]
-
-# Twitter(x)認証　リダイレクトuri
-TWITTER_REDIRECT_URI = os.environ["TWITTER_REDIRECT_URI"]
