@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 
@@ -349,7 +350,9 @@ def replies_view(request):
         Tweet.objects.filter(
             author=request.user.user_id,
             in_reply_to_tweet_id__isnull=True,
-        ).order_by("-created_at")
+        )
+        .prefetch_related("media")
+        .order_by("-created_at")
     )
 
     my_replies = list(
@@ -402,6 +405,10 @@ def _decorate_reply(
     base_reply.in_reply_to_tweet_text = _strip_leading_mentions(
         parent_tweet.text
     ).rsplit(" https://t.co", 1)[0]
+
+    parent_tweet_media_list = [media.url for media in parent_tweet.media.all()]
+
+    base_reply.in_reply_to_tweet_media_list = json.dumps(parent_tweet_media_list)
 
     if my_reply:
         _set_display_created_at(my_reply)

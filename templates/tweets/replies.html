@@ -64,6 +64,24 @@
     </div>
     <div class="flex-1 rounded-2xl">
       <p class="whitespace-pre-wrap text-lg" id="tweet-text"></p>
+      <div class="grid grid-cols-4 gap-2">
+        <img
+          data-parent-media-url="0"
+          class="rounded-xl aspect-square object-cover w-full hidden"
+        />
+        <img
+          data-parent-media-url="1"
+          class="rounded-xl aspect-square object-cover w-full hidden"
+        />
+        <img
+          data-parent-media-url="2"
+          class="rounded-xl aspect-square object-cover w-full hidden"
+        />
+        <img
+          data-parent-media-url="3"
+          class="rounded-xl aspect-square object-cover w-full hidden"
+        />
+      </div>
     </div>
   </div>
 </dialog>
@@ -172,6 +190,14 @@
       $("#in-reply-to-text-modal")[0].showModal();
       const tweetText = $(this).data("in-reply-to-text");
       $("#tweet-text").text(tweetText);
+
+      const mediaUrls = $(this).data("media-url-list");
+      $("[data-parent-media-url]").addClass("hidden");
+      for (const [index, mediaUrl] of mediaUrls.entries()) {
+        $(`[data-parent-media-url="${index}"]`)
+          .removeClass("hidden")
+          .attr("src", mediaUrl);
+      }
     });
 
     $("#close-in-reply-to-text-modal-button").on("click", () => {
