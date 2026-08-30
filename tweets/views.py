@@ -31,6 +31,7 @@ def tweets_view(request):
             author=request.user.user_id, in_reply_to_tweet_id__isnull=True
         )
         .select_related("author")
+        .prefetch_related("media")
         .order_by("-created_at")
     )
 
@@ -293,6 +294,7 @@ def save_all_tweets(request):
             author=request.user.user_id, in_reply_to_tweet_id__isnull=True
         )
         .select_related("author")
+        .prefetch_related("media")
         .order_by("-created_at")
     )
 
