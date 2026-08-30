@@ -45,7 +45,7 @@ def tweets_view(request):
 
 def _strip_media_link(post: Tweet):
     """画像付き投稿の本文末尾に付く t.co リンクを取り除く。"""
-    post.text = post.text.rsplit(" https://t.co", 1)[0]
+    post.text = post.text.rsplit("https://t.co", 1)[0]
 
 
 def _set_display_created_at(tweet):
