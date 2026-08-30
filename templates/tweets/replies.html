@@ -64,7 +64,7 @@
     </div>
     <div class="flex-1 rounded-2xl">
       <p class="whitespace-pre-wrap text-lg" id="tweet-text"></p>
-      <div class="grid grid-cols-4 gap-2">
+      <div data-tweet-media class="grid grid-cols-4 gap-2">
         <img
           data-parent-media-url="0"
           class="rounded-xl aspect-square object-cover w-full hidden hover:cursor-pointer"
@@ -153,6 +153,8 @@
     </div>
   </div>
 </dialog>
+
+{% include "tweets/_image_modal.html" %}
 
 <script>
   $(document).ready(() => {
@@ -287,6 +289,16 @@
           alert("想定外のエラーが発生しました。");
         }
       });
+    });
+
+    // 画像拡大表示
+    $("[data-tweet-media] img").on("click", function() {
+      const imageUrl = $(this).attr("src");
+      $("#img-modal img").attr("src", imageUrl);
+      $("#img-modal")[0].showModal();
+    });
+    $("#img-modal button").on("click", () => {
+      $("#img-modal")[0].close();
     });
   });
 </script>
