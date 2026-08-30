@@ -41,6 +41,14 @@
         </p>
       </div>
       <p class="my-1 text-lg whitespace-pre-wrap">{{ reply.text }}</p>
+      <div class="grid grid-cols-4 gap-2">
+        {% for media in reply.media.all %}
+        <img
+          class="rounded-xl aspect-square object-cover w-full"
+          src="{{media.url}}"
+        />
+        {% endfor %}
+      </div>
     </div>
   </div>
   <!-- リプライへの返信 -->
@@ -65,6 +73,14 @@
         </div>
         <!-- prettier-ignore -->
         <p class="text-lg whitespace-pre-wrap">{{ reply.my_reply.display_text }}</p>
+        <div class="grid grid-cols-4 gap-2">
+          {% for media in reply.my_reply.media.all %}
+          <img
+            class="rounded-xl aspect-square object-cover w-full"
+            src="{{media.url}}"
+          />
+          {% endfor %}
+        </div>
       </div>
     </div>
   </div>

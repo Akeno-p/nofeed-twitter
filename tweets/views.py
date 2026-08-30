@@ -358,6 +358,7 @@ def replies_view(request):
             in_reply_to_tweet_id__isnull=False,
         )
         .select_related("author")
+        .prefetch_related("media")
         .order_by("-created_at")
     )
 
@@ -367,6 +368,7 @@ def replies_view(request):
         Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
         .exclude(author=request.user.user_id)
         .select_related("author")
+        .prefetch_related("media")
         .order_by("-created_at")
     )
 
@@ -654,6 +656,7 @@ def save_all_replies(request):
         Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
         .exclude(author=request.user.user_id)
         .select_related("author")
+        .prefetch_related("media")
         .order_by("-created_at")
     )
 
