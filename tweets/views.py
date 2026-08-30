@@ -380,6 +380,7 @@ def replies_view(request):
         my_reply = my_reply_by_parent_tweet_id.get(reply.id)
 
         _decorate_reply(reply, parent_tweet, my_reply)
+        _strip_media_link(reply)
 
     return render(request, "tweets/replies.html", {"replies": replies})
 
@@ -396,10 +397,13 @@ def _decorate_reply(
     base_reply.text = _strip_leading_mentions(base_reply.text)
 
     _set_display_created_at(base_reply)
-    base_reply.in_reply_to_tweet_text = _strip_leading_mentions(parent_tweet.text)
+    base_reply.in_reply_to_tweet_text = _strip_leading_mentions(
+        parent_tweet.text
+    ).rsplit(" https://t.co", 1)[0]
 
     if my_reply:
         _set_display_created_at(my_reply)
+        _strip_media_link(my_reply)
         base_reply.my_reply = my_reply
         base_reply.my_reply.display_text = _strip_leading_mentions(
             base_reply.my_reply.text
@@ -484,10 +488,10 @@ def post_reply(request):
     if save_replies_status == "error":
         return JsonResponse(save_replies_result)
 
+    my_reply = Tweet.objects.get(id=posted_reply_id)
     reply = Tweet.objects.get(id=reply_id)
     parent_tweet = Tweet.objects.get(id=reply.in_reply_to_tweet_id)
-    my_reply = Tweet.objects.get(id=posted_reply_id)
-
+    _strip_media_link(reply)
     _decorate_reply(reply, parent_tweet, my_reply)
 
     html = render_to_string("tweets/_replies.html", {"reply": reply})
@@ -510,7 +514,6 @@ def save_all_replies(request):
         .exclude(author=request.user.user_id)
         .aggregate(last_id=Max("id"))["last_id"]
     )
-
     last_reply = Tweet.objects.filter(id=last_reply_id).first()
     if last_reply:
         last_reply_created_at = last_reply.created_at
@@ -664,6 +667,7 @@ def save_all_replies(request):
         my_reply = my_reply_by_parent_tweet_id.get(reply.id)
 
         _decorate_reply(reply, parent_tweet, my_reply)
+        _strip_media_link(reply)
 
     html = render_to_string(
         "tweets/_replies_list.html", {"replies": replies}, request=request
