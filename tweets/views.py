@@ -12,14 +12,11 @@ from django.utils import timezone
 
 from common.utils import request_with_token_refresh, update_tokens
 from common.x_api import (
-    TWITTER_GET_TWEET_ENDPOINT,
-    TWITTER_MEDIA_ENDPOINT,
     TWITTER_SEARCH_RECENT_ENDPOINT,
-    TWITTER_TWEET_ENDPOINT,
     TWITTER_USER_TWEETS_ENDPOINT,
     TWITTER_USERS_ENDPOINT,
 )
-from common.x_api_client import post_media_request, post_tweet_request
+from common.x_api_client import get_tweet, post_media_request, post_tweet_request
 from tweets.models import Tweet, TweetMedia
 from users.models import User
 
@@ -46,43 +43,31 @@ def post_tweet(request):
     media_ids = []
 
     for image in images_list:
-        image_status, image_result = request_with_token_refresh(
+        post_image_status, post_image_result = request_with_token_refresh(
             request, post_media_request, image
         )
-        if image_status == "error":
-            return JsonResponse(image_result)
+        if post_image_status == "error":
+            return JsonResponse(post_image_result)
 
-        media_ids.append(image_result.json()["data"]["id"])
+        media_ids.append(post_image_result.json()["data"]["id"])
 
     payload = {"text": tweet_text}
     if media_ids:
         payload["media"] = {"media_ids": media_ids}
 
-    status, result = request_with_token_refresh(request, post_tweet_request, payload)
+    post_tweet_status, post_tweet_result = request_with_token_refresh(
+        request, post_tweet_request, payload
+    )
 
-    if status == "error":
-        return JsonResponse(result)
+    if post_tweet_status == "error":
+        return JsonResponse(post_tweet_result)
 
     # 手元のデータからでも保存する値は組み立てられるが、処理が複雑になるのと、
     # 実際のデータとずれるリスクもあるため、APIから取り直す形にしています。
-    tweet_id = result.json().get("data").get("id")
-
-    def get_tweet():
-        get_tweet_response = requests.get(
-            TWITTER_GET_TWEET_ENDPOINT.format(tweet_id=tweet_id),
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            params={
-                "post.fields": "created_at,author_id,conversation_id,referenced_tweets,attachments",
-                "expansions": "attachments.media_keys",
-                "media.fields": "url,type,alt_text,width,height,duration_ms",
-            },
-        )
-
-        return get_tweet_response
+    posted_tweet_id = post_tweet_result.json().get("data").get("id")
 
     get_tweet_status, get_tweet_result = request_with_token_refresh(
-        request,
-        get_tweet,
+        request, get_tweet, posted_tweet_id
     )
 
     if get_tweet_status == "error":
@@ -133,6 +118,7 @@ def post_tweet(request):
 
     # tweetのcreated_atをstrからdatetimeに更新するため
     tweet.refresh_from_db()
+
     tweet.strip_media_link()
     tweet.set_display_created_at()
 
@@ -387,21 +373,8 @@ def post_reply(request):
 
     posted_reply_id = post_reply_result.json().get("data").get("id")
 
-    def get_reply():
-        get_reply_response = requests.get(
-            TWITTER_GET_TWEET_ENDPOINT.format(tweet_id=posted_reply_id),
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            params={
-                "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
-                "expansions": "attachments.media_keys",
-                "media.fields": "url,type,alt_text,width,height,duration_ms",
-            },
-        )
-        return get_reply_response
-
     get_reply_status, get_reply_result = request_with_token_refresh(
-        request,
-        get_reply,
+        request, get_tweet, posted_reply_id
     )
 
     if get_reply_status == "error":

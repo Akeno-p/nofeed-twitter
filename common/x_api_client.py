@@ -63,3 +63,51 @@ def post_tweet_request(request: HttpRequest, payload: dict) -> requests.Response
         json=payload,
     )
     return response
+
+
+def get_tweet(request: HttpRequest, tweet_id: str | int) -> requests.Response:
+    """ツイートやリプライを１件取得するリクエスト
+
+    response.json() の結果は下記の形。
+
+    {
+        "data": {
+            "id": "ツイートID",
+            "text": "本文",
+            "author_id": "投稿者のユーザーID",
+            "created_at": "投稿時間(例：2025-08-02T10:30:00.000Z)",
+            "conversation_id": "会話ID",
+            "edit_history_tweet_ids": ["ツイートIDのリスト"],
+            "referenced_tweets": [{
+                "type": "replied_to / quoted",
+                "id": "参照先ツイートID"
+            }],
+            "attachments": {"media_keys":["media_keyのリスト"]}
+        },
+        "includes": {
+            "media": [
+                {
+                "media_key": "メディアキー",
+                "type": "photo / video / animated_gif",
+                "url": メディアのURL,
+                "alt_text": "代替テキスト",
+                "width": 横幅,
+                "height": 縦幅,
+                "duration_ms": 15000
+                }
+            ]
+        }
+    }
+
+    """
+    response = requests.get(
+        TWITTER_GET_TWEET_ENDPOINT.format(tweet_id=tweet_id),
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        params={
+            "post.fields": "created_at,author_id,conversation_id,referenced_tweets,attachments",
+            "expansions": "attachments.media_keys",
+            "media.fields": "url,type,alt_text,width,height,duration_ms",
+        },
+    )
+
+    return response
