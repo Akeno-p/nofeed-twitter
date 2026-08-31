@@ -19,7 +19,7 @@ from common.x_api import (
     TWITTER_USER_TWEETS_ENDPOINT,
     TWITTER_USERS_ENDPOINT,
 )
-from common.x_api_client import post_media_request
+from common.x_api_client import post_media_request, post_tweet_request
 from tweets.models import Tweet, TweetMedia
 from users.models import User
 
@@ -58,24 +58,16 @@ def post_tweet(request):
     if media_ids:
         payload["media"] = {"media_ids": media_ids}
 
-    def post_tweet_request():
-        post_tweet_response = requests.post(
-            TWITTER_TWEET_ENDPOINT,
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            json=payload,
-        )
-        return post_tweet_response
-
-    post_tweet_status, post_tweet_result = request_with_token_refresh(
-        request, post_tweet_request, 201
+    status, result = request_with_token_refresh(
+        request, lambda: post_tweet_request(request, payload), 201
     )
 
-    if post_tweet_status == "error":
-        return JsonResponse(post_tweet_result)
+    if status == "error":
+        return JsonResponse(result)
 
     # 手元のデータからでも保存する値は組み立てられるが、処理が複雑になるのと、
     # 実際のデータとずれるリスクもあるため、APIから取り直す形にしています。
-    tweet_id = post_tweet_result.json().get("data").get("id")
+    tweet_id = result.json().get("data").get("id")
 
     def get_tweet():
         get_tweet_response = requests.get(
@@ -384,16 +376,8 @@ def post_reply(request):
     if media_ids:
         payload["media"] = {"media_ids": media_ids}
 
-    def post_reply_request():
-        post_reply_response = requests.post(
-            TWITTER_TWEET_ENDPOINT,
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            json=payload,
-        )
-        return post_reply_response
-
     post_reply_status, post_reply_result = request_with_token_refresh(
-        request, post_reply_request, 201
+        request, lambda: post_tweet_request(request, payload), 201
     )
 
     if post_reply_status == "error":
