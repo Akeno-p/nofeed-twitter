@@ -47,7 +47,7 @@ def post_tweet(request):
 
     for image in images_list:
         image_status, image_result = request_with_token_refresh(
-            request, lambda image=image: post_media_request(request, image), 200
+            request, post_media_request, image
         )
         if image_status == "error":
             return JsonResponse(image_result)
@@ -58,9 +58,7 @@ def post_tweet(request):
     if media_ids:
         payload["media"] = {"media_ids": media_ids}
 
-    status, result = request_with_token_refresh(
-        request, lambda: post_tweet_request(request, payload), 201
-    )
+    status, result = request_with_token_refresh(request, post_tweet_request, payload)
 
     if status == "error":
         return JsonResponse(result)
@@ -83,7 +81,8 @@ def post_tweet(request):
         return get_tweet_response
 
     get_tweet_status, get_tweet_result = request_with_token_refresh(
-        request, get_tweet, 200
+        request,
+        get_tweet,
     )
 
     if get_tweet_status == "error":
@@ -169,7 +168,10 @@ def save_all_tweets(request):
         return response
 
     while True:
-        status, result = request_with_token_refresh(request, get_all_tweets, 200)
+        status, result = request_with_token_refresh(
+            request,
+            get_all_tweets,
+        )
 
         if status == "error":
             return JsonResponse(result)
@@ -365,7 +367,7 @@ def post_reply(request):
 
     for image in images_list:
         image_status, image_result = request_with_token_refresh(
-            request, lambda image=image: post_media_request(request, image), 200
+            request, post_media_request, image
         )
         if image_status == "error":
             return JsonResponse(image_result)
@@ -377,7 +379,7 @@ def post_reply(request):
         payload["media"] = {"media_ids": media_ids}
 
     post_reply_status, post_reply_result = request_with_token_refresh(
-        request, lambda: post_tweet_request(request, payload), 201
+        request, post_tweet_request, payload
     )
 
     if post_reply_status == "error":
@@ -398,7 +400,8 @@ def post_reply(request):
         return get_reply_response
 
     get_reply_status, get_reply_result = request_with_token_refresh(
-        request, get_reply, 200
+        request,
+        get_reply,
     )
 
     if get_reply_status == "error":
@@ -703,7 +706,7 @@ def _get_users(request, user_ids):
         )
         return users_response
 
-    return request_with_token_refresh(request, users_request, 200)
+    return request_with_token_refresh(request, users_request)
 
 
 def _save_users(request, user_ids):
