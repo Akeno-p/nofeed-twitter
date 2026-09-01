@@ -3,6 +3,8 @@ X APIへ実際にリクエストを送る関数をまとめたモジュール。
 定数やエンドポイントURLは common/x_api.py に置く。
 """
 
+from typing import TypedDict
+
 import requests
 from django.core.files.uploadedfile import UploadedFile
 from django.http import HttpRequest
@@ -15,6 +17,54 @@ from common.x_api import (
     TWITTER_USER_TWEETS_ENDPOINT,
     TWITTER_USERS_ENDPOINT,
 )
+
+
+class TweetResponseData(TypedDict, total=False):
+    """ツイートやリプライ1件分のデータの形
+    get_tweet のresponseを .json().get("data")した時の形
+
+
+    "id": "ツイートID",
+    "text": "本文",
+    "author_id": "投稿者のユーザーID",
+    "created_at": "投稿時間(例：2025-08-02T10:30:00.000Z)",
+    "conversation_id": "会話ID",
+    "referenced_tweets": [{
+        "type": "replied_to / quoted",
+        "id": "参照先ツイートID"
+    }],
+    "attachments": {"media_keys":["media_keyのリスト"]}
+    """
+
+    id: str
+    text: str
+    author_id: str
+    created_at: str
+    conversation_id: str
+    referenced_tweets: list[dict]
+    attachments: dict
+
+
+class MediaResponseData(TypedDict, total=False):
+    """メディア1件分のデータの形
+    get_tweet のresponseを .json().get("includes",{}).get("media",[])した時の形
+
+    "media_key": "メディアキー",
+    "type": "photo / video / animated_gif",
+    "url": メディアのURL,
+    "alt_text": "代替テキスト",
+    "width": 横幅,
+    "height": 縦幅,
+    "duration_ms": 15000
+    """
+
+    media_key: str
+    type: str
+    url: str
+    alt_text: str
+    width: int
+    height: int
+    duration_ms: int
 
 
 def post_media_request(request: HttpRequest, image: UploadedFile) -> requests.Response:
@@ -98,6 +148,7 @@ def get_tweet(request: HttpRequest, tweet_id: str | int) -> requests.Response:
             ]
         }
     }
+
 
     """
     response = requests.get(

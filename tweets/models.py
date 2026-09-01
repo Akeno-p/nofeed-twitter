@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from django.db import models
 from django.utils import timezone
+
+from common.x_api_client import TweetResponseData
 
 
 class TweetManager(models.Manager):
@@ -11,6 +15,33 @@ class TweetManager(models.Manager):
             .prefetch_related("media")
             .order_by("-created_at")
         )
+
+    def create_from_response(self, created_tweet: TweetResponseData) -> Tweet:
+        """ツイートを1件保存する"""
+        in_reply_to_tweet_id = None
+
+        in_quoted_to_tweet_id = None
+
+        tweet_type = created_tweet.get("type")
+
+        if tweet_type == "quoted":
+            in_quoted_to_tweet_id = created_tweet.get("id")
+        elif tweet_type == "replied_to":
+            in_reply_to_tweet_id = created_tweet.get("id")
+
+        tweet = Tweet(
+            id=created_tweet.get("id"),
+            author_id=created_tweet.get("author_id"),
+            text=created_tweet.get("text"),
+            created_at=created_tweet.get("created_at"),
+            conversation_id=created_tweet.get("conversation_id"),
+            in_reply_to_tweet_id=in_reply_to_tweet_id,
+            in_quoted_to_tweet_id=in_quoted_to_tweet_id,
+        )
+
+        tweet.save()
+
+        return tweet
 
 
 class Tweet(models.Model):

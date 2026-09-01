@@ -75,27 +75,7 @@ def post_tweet(request):
 
     created_tweet = get_tweet_result.json().get("data")
 
-    in_reply_to_tweet_id = None
-    in_quoted_to_tweet_id = None
-
-    tweet_type = created_tweet.get("type")
-
-    if tweet_type == "quoted":
-        in_quoted_to_tweet_id = created_tweet.get("id")
-    elif tweet_type == "replied_to":
-        in_reply_to_tweet_id = created_tweet.get("id")
-
-    tweet = Tweet(
-        id=created_tweet.get("id"),
-        author_id=created_tweet.get("author_id"),
-        text=created_tweet.get("text"),
-        created_at=created_tweet.get("created_at"),
-        conversation_id=created_tweet.get("conversation_id"),
-        in_reply_to_tweet_id=in_reply_to_tweet_id,
-        in_quoted_to_tweet_id=in_quoted_to_tweet_id,
-    )
-
-    tweet.save()
+    saved_tweet = Tweet.objects.create_from_response(created_tweet)
 
     tweet_media_list = get_tweet_result.json().get("includes", {}).get("media", [])
 
@@ -104,7 +84,7 @@ def post_tweet(request):
     for tweet_media in tweet_media_list:
         media = TweetMedia(
             media_key=tweet_media.get("media_key"),
-            tweet=tweet,
+            tweet=saved_tweet,
             media_type=tweet_media.get("type"),
             url=tweet_media.get("url"),
             alt_text=tweet_media.get("alt_text"),
@@ -116,13 +96,15 @@ def post_tweet(request):
 
     TweetMedia.objects.bulk_create(media_list)
 
+
+
     # tweetのcreated_atをstrからdatetimeに更新するため
-    tweet.refresh_from_db()
+    saved_tweet.refresh_from_db()
 
-    tweet.strip_media_link()
-    tweet.set_display_created_at()
+    saved_tweet.strip_media_link()
+    saved_tweet.set_display_created_at()
 
-    html = render_to_string("tweets/_tweets.html", {"tweet": tweet})
+    html = render_to_string("tweets/_tweets.html", {"tweet": saved_tweet})
 
     return JsonResponse({"status": "success", "html": html})
 
