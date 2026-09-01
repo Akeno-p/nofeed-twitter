@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.db import models
 from django.utils import timezone
 
-from common.x_api_client import TweetResponseData
+from common.x_api_client import MediaResponseData, TweetResponseData
 
 
 class TweetManager(models.Manager):
@@ -113,6 +113,29 @@ class Tweet(models.Model):
             return
 
         self.display_created_at = created_date
+
+
+class TweetMediaManager(models.Manager):
+    def bulk_create_from_responses(
+        self, media_responses: list[MediaResponseData], tweet: Tweet
+    ) -> None:
+
+        media_list = []
+
+        for media_response in media_responses:
+            media = TweetMedia(
+                media_key=media_response.get("media_key"),
+                tweet=tweet,
+                media_type=media_response.get("type"),
+                url=media_response.get("url"),
+                alt_text=media_response.get("alt_text"),
+                width=media_response.get("width"),
+                height=media_response.get("height"),
+                duration_ms=media_response.get("duration_ms"),
+            )
+            media_list.append(media)
+
+        TweetMedia.objects.bulk_create(media_list)
 
 
 class TweetMedia(models.Model):

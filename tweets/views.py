@@ -77,26 +77,9 @@ def post_tweet(request):
 
     saved_tweet = Tweet.objects.create_from_response(created_tweet)
 
-    tweet_media_list = get_tweet_result.json().get("includes", {}).get("media", [])
+    media_responses = get_tweet_result.json().get("includes", {}).get("media", [])
 
-    media_list = []
-
-    for tweet_media in tweet_media_list:
-        media = TweetMedia(
-            media_key=tweet_media.get("media_key"),
-            tweet=saved_tweet,
-            media_type=tweet_media.get("type"),
-            url=tweet_media.get("url"),
-            alt_text=tweet_media.get("alt_text"),
-            width=tweet_media.get("width"),
-            height=tweet_media.get("height"),
-            duration_ms=tweet_media.get("duration_ms"),
-        )
-        media_list.append(media)
-
-    TweetMedia.objects.bulk_create(media_list)
-
-
+    TweetMedia.objects.bulk_create_from_responses(media_responses, saved_tweet)
 
     # tweetのcreated_atをstrからdatetimeに更新するため
     saved_tweet.refresh_from_db()
