@@ -162,3 +162,45 @@ def get_tweet(request: HttpRequest, tweet_id: str | int) -> requests.Response:
     )
 
     return response
+
+
+def get_all_tweets(
+    request: HttpRequest, next_token: str | None = None
+) -> requests.Response:
+    """自分のツイートを一覧取得するリクエスト
+
+    params: 取得条件を下記の形で入れる。
+    "pagination_token" は2ページ目以降を取得するときだけ入れる。
+    {
+        "max_results": 1回で取得する件数(最大100),
+        "post.fields": "取得するツイートのフィールド",
+        "expansions": "attachments.media_keys",
+        "media.fields": "取得するメディアのフィールド"
+        "pagination_token": "前回レスポンスの meta.next_token"
+    }
+
+    response.json()の結果は下記の形
+    {
+        "data": [TweetResponseData],
+        "includes": {"media":[MediaResponseData]}
+        "meta": {
+            "result_count: 取得できた件数",
+            "next_token": "次のページがあるときだけ入る"
+        }
+    }
+    """
+    params = {
+        "max_results": 100,
+        "post.fields": "created_at,author_id,conversation_id,referenced_tweets,attachments",
+        "expansions": "attachments.media_keys",
+        "media.fields": "url,type,alt_text,width,height,duration_ms",
+    }
+    if next_token:
+        params["pagination_token"] = next_token
+    response = requests.get(
+        TWITTER_USER_TWEETS_ENDPOINT.format(user_id=request.user.user.id),
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        params=params,
+    )
+
+    return response

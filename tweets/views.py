@@ -13,10 +13,14 @@ from django.utils import timezone
 from common.utils import request_with_token_refresh, update_tokens
 from common.x_api import (
     TWITTER_SEARCH_RECENT_ENDPOINT,
-    TWITTER_USER_TWEETS_ENDPOINT,
     TWITTER_USERS_ENDPOINT,
 )
-from common.x_api_client import get_tweet, post_media_request, post_tweet_request
+from common.x_api_client import (
+    get_all_tweets,
+    get_tweet,
+    post_media_request,
+    post_tweet_request,
+)
 from tweets.models import Tweet, TweetMedia
 from users.models import User
 
@@ -99,30 +103,8 @@ def save_all_tweets(request):
     all_tweets_media_list = []
     next_token = None
 
-    def get_all_tweets():
-        params = {
-            "max_results": 100,
-            "post.fields": "created_at,author_id,conversation_id,referenced_tweets,attachments",
-            "expansions": "attachments.media_keys",
-            "media.fields": "url,type,alt_text,width,height,duration_ms",
-        }
-        if next_token:
-            params["pagination_token"] = next_token
-
-        response = requests.get(
-            TWITTER_USER_TWEETS_ENDPOINT.format(user_id=request.user.user.id),
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            # 最大100件までしか取得できない
-            params=params,
-        )
-
-        return response
-
     while True:
-        status, result = request_with_token_refresh(
-            request,
-            get_all_tweets,
-        )
+        status, result = request_with_token_refresh(request, get_all_tweets, next_token)
 
         if status == "error":
             return JsonResponse(result)
@@ -135,10 +117,8 @@ def save_all_tweets(request):
         if not next_token:
             break
 
-    saved_tweet_ids = set(
-        Tweet.objects.filter(author=request.user.user_id).values_list("id", flat=True)
-    )
-    saved_tweet_media_keys = set(TweetMedia.objects.values_list("media_key", flat=True))
+    saved_tweet_ids = set(Tweet.objects.all_tweet_ids())
+    saved_tweet_media_keys = set(TweetMedia.objects.all_tweet_media_ids())
 
     tweets_list = []
     media_list = []

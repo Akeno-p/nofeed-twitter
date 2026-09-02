@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from django.db import models
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from common.x_api_client import MediaResponseData, TweetResponseData
+from users.models import Account
 
 
 class TweetManager(models.Manager):
-    def my_tweets(self, account):
+    def my_tweets(self, account: Account) -> QuerySet[Tweet]:
         """自分のツイート(リプライを除く)を新しい順で返す"""
         return (
             self.filter(author=account.user_id, in_reply_to_tweet_id__isnull=True)
@@ -15,6 +17,10 @@ class TweetManager(models.Manager):
             .prefetch_related("media")
             .order_by("-created_at")
         )
+
+    def all_tweet_ids(self) -> QuerySet[int]:
+        """すべてのツイートのIdを返す"""
+        return self.values_list("id", flat=True)
 
     def create_from_response(self, created_tweet: TweetResponseData) -> Tweet:
         """ツイートを1件保存する"""
@@ -116,9 +122,14 @@ class Tweet(models.Model):
 
 
 class TweetMediaManager(models.Manager):
+    def all_tweet_media_ids(self) -> QuerySet[int]:
+        """すべてのツイートメディアのIDを返す"""
+        return TweetMedia.objects.values_list("media_key", flat=True)
+
     def bulk_create_from_responses(
         self, media_responses: list[MediaResponseData], tweet: Tweet
     ) -> None:
+        """リストで渡したTweetMediaResponseを保存する"""
 
         media_list = []
 
@@ -140,6 +151,8 @@ class TweetMediaManager(models.Manager):
 
 class TweetMedia(models.Model):
     """ツイートのメディア情報(画像・動画)"""
+
+    objects = TweetMediaManager()
 
     class MediaType(models.TextChoices):
         PHOTO = "photo", "写真"
