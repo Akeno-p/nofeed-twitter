@@ -1,11 +1,24 @@
 from __future__ import annotations
 
+from typing import TypedDict
+
 from django.db import models
 from django.db.models import QuerySet
 from django.utils import timezone
 
 from common.x_api_client import MediaResponseData, TweetResponseData
 from users.models import Account
+
+
+class TweetMediaPair(TypedDict):
+    """メディアキー(pk)とそれに紐づくツイートのID(pk)を持った辞書
+
+    media_key: メディアキー(TweetMedia.media_key)
+    tweet_id: ツイートID(Tweet.id)
+    """
+
+    media_key: str
+    tweet_id: int
 
 
 class TweetManager(models.Manager):
@@ -48,6 +61,57 @@ class TweetManager(models.Manager):
         tweet.save()
 
         return tweet
+
+    def bulk_create_from_responses(
+        self, tweet_responses: list[TweetResponseData], saved_tweet_ids: set[int]
+    ) -> list[TweetMediaPair]:
+        """リストで渡したツイートを保存する。
+
+        tweet_responses: 保存したいツイート。
+        saved_tweet_ids: 保存済みのツイートのID、保存済みのツイートをスキップするのに使用する。
+        """
+
+        tweets_list = []
+        tweet_media_pairs = []
+        for tweet_response in tweet_responses:
+            tweet_id = int(tweet_response.get("id"))
+
+            media_keys = tweet_response.get("attachments", {}).get("media_keys", [])
+
+            for media_key in media_keys:
+                tweet_media_pairs.append({"media_key": media_key, "tweet_id": tweet_id})
+
+            if tweet_id in saved_tweet_ids:
+                continue
+
+            in_reply_to_tweet_id = None
+            in_quoted_to_tweet_id = None
+
+            referenced_tweet_list = tweet_response.get("referenced_tweets")
+
+            if referenced_tweet_list is not None:
+                for referenced_tweet in referenced_tweet_list:
+                    referenced_tweet_type = referenced_tweet.get("type")
+
+                    if referenced_tweet_type == "quoted":
+                        in_quoted_to_tweet_id = referenced_tweet.get("id")
+                    elif referenced_tweet_type == "replied_to":
+                        in_reply_to_tweet_id = referenced_tweet.get("id")
+
+            tweet = Tweet(
+                id=tweet_id,
+                author_id=tweet_response.get("author_id"),
+                text=tweet_response.get("text"),
+                created_at=tweet_response.get("created_at"),
+                conversation_id=tweet_response.get("conversation_id"),
+                in_reply_to_tweet_id=in_reply_to_tweet_id,
+                in_quoted_to_tweet_id=in_quoted_to_tweet_id,
+            )
+            tweets_list.append(tweet)
+
+        self.bulk_create(tweets_list)
+
+        return tweet_media_pairs
 
 
 class Tweet(models.Model):
@@ -122,21 +186,69 @@ class Tweet(models.Model):
 
 
 class TweetMediaManager(models.Manager):
-    def all_tweet_media_ids(self) -> QuerySet[int]:
-        """すべてのツイートメディアのIDを返す"""
+    def all_tweet_media_keys(self) -> QuerySet[str]:
+        """すべてのツイートメディアのmedia_key(id)を返す"""
         return TweetMedia.objects.values_list("media_key", flat=True)
 
-    def bulk_create_from_responses(
-        self, media_responses: list[MediaResponseData], tweet: Tweet
+    def bulk_create_for_tweet(
+        self,
+        media_responses: list[MediaResponseData],
+        saved_tweet_media_keys: set[str],
+        tweet_id: int,
     ) -> None:
-        """リストで渡したTweetMediaResponseを保存する"""
+        """リストで渡したメディアを保存する。メディアの紐づけ先のツイートが一つの場合こちらを使う。
+
+        media_responses: 保存したいメディア。
+        saved_tweet_media_keys: 保存済みのメディアのID、保存済みのメディアをスキップするのに使用する。
+        tweet_id: メディア紐づけ先のツイートID
+
+        【例】
+        メディアA -- ツイートA
+        メディアB -- ツイートA
+        メディアC -- ツイートA
+        メディアD -- ツイートA
+        """
+        tweet_media_pairs = [
+            {"tweet_id": tweet_id, "media_key": media_response["media_key"]}
+            for media_response in media_responses
+        ]
+        self.bulk_create_from_responses(
+            media_responses, saved_tweet_media_keys, tweet_media_pairs
+        )
+
+    def bulk_create_from_responses(
+        self,
+        media_responses: list[MediaResponseData],
+        saved_tweet_media_keys: set[str],
+        tweet_media_pairs: list[TweetMediaPair],
+    ) -> None:
+        """リストで渡したメディアを保存する。メディアの紐づけ先ツイートが複数の場合こちらを使う。
+
+        media_responses: 保存したいメディア。
+        saved_tweet_media_keys: 保存済みのメディアのID、保存済みのメディアをスキップするのに使用する。
+        tweet_media_pairs: メディアキー(pk)とそれに紐づくツイートのID(pk)を持った辞書
+
+        【例】
+        メディアA -- ツイートA
+        メディアB -- ツイートC
+        メディアC -- ツイートA
+        メディアD -- ツイートB
+        """
 
         media_list = []
-
         for media_response in media_responses:
+            media_key = media_response.get("media_key")
+            tweet_id = None
+            if media_key in saved_tweet_media_keys:
+                continue
+
+            for tweet_media_pair in tweet_media_pairs:
+                if tweet_media_pair["media_key"] == media_key:
+                    tweet_id = tweet_media_pair["tweet_id"]
+
             media = TweetMedia(
-                media_key=media_response.get("media_key"),
-                tweet=tweet,
+                media_key=media_key,
+                tweet_id=tweet_id,
                 media_type=media_response.get("type"),
                 url=media_response.get("url"),
                 alt_text=media_response.get("alt_text"),
