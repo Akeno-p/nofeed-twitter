@@ -67,6 +67,22 @@ class MediaResponseData(TypedDict, total=False):
     duration_ms: int
 
 
+class UserResponseData(TypedDict):
+    """メディア1件分のデータの形
+    get_users のresponseを .json().get("data",[])した時の形
+
+    "id": "ユーザーID",
+    "name": "表示名",
+    "username": "ユーザー名(@の後ろ)",
+    "profile_image_url": "アイコン画像のURL"
+    """
+
+    id: str
+    name: str
+    username: str
+    profile_image_url: str
+
+
 def post_media_request(request: HttpRequest, image: UploadedFile) -> requests.Response:
     """画像をアップロードするリクエスト
 
@@ -203,4 +219,34 @@ def get_all_tweets(
         params=params,
     )
 
+    return response
+
+
+def get_users(request: HttpRequest, user_ids: list[int]) -> requests.Response:
+    """ユーザー情報を複数取得するリクエスト
+
+    user_ids: 取得したいユーザーのIDのリスト。1回で最大100件まで。
+
+    response.json() の結果は下記の形。
+    {
+        "data": [
+            {
+                "id": "ユーザーID",
+                "name": "表示名",
+                "username": "ユーザー名(@の後ろ)",
+                "profile_image_url": "アイコン画像のURL"
+            }
+        ]
+    }
+    ※ 削除・凍結されたユーザーのIDが含まれていた場合、そのユーザーは dataに入らず、
+      代わりに "errors" キーに理由が入る。
+    """
+    response = requests.get(
+        TWITTER_USERS_ENDPOINT,
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        params={
+            "ids": ",".join(str(user_id) for user_id in user_ids),
+            "user.fields": "profile_image_url",
+        },
+    )
     return response

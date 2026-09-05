@@ -11,13 +11,11 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from common.utils import request_with_token_refresh, update_tokens
-from common.x_api import (
-    TWITTER_SEARCH_RECENT_ENDPOINT,
-    TWITTER_USERS_ENDPOINT,
-)
+from common.x_api import TWITTER_SEARCH_RECENT_ENDPOINT
 from common.x_api_client import (
     get_all_tweets,
     get_tweet,
+    get_users,
     post_media_request,
     post_tweet_request,
 )
@@ -516,10 +514,15 @@ def _save_replies(request, replies_response_list, replies_media_response_list):
             replies_list.append(reply)
 
     if not_saved_user_ids:
-        save_users_status, save_users_result = _save_users(request, not_saved_user_ids)
+        get_users_status, get_users_result = request_with_token_refresh(
+            request, get_users, not_saved_user_ids
+        )
 
-        if save_users_status == "error":
-            return save_users_status, save_users_result
+        if get_users_status == "error":
+            return get_users_status, get_users_result
+
+        user_responses = get_users_result.json().get("data")
+        User.objects.bulk_create_from_responses(user_responses)
 
     Tweet.objects.bulk_create(replies_list)
 
@@ -545,46 +548,5 @@ def _save_replies(request, replies_response_list, replies_media_response_list):
         )
         media_list.append(media)
     TweetMedia.objects.bulk_create(media_list)
-
-    return "success", None
-
-
-def _get_users(request, user_ids):
-    """取得したいuserのidをリストで渡すとuserの情報が取得される"""
-
-    def users_request():
-        users_response = requests.get(
-            TWITTER_USERS_ENDPOINT,
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            params={
-                "ids": ",".join(str(user_id) for user_id in user_ids),
-                "user.fields": "profile_image_url",
-            },
-        )
-        return users_response
-
-    return request_with_token_refresh(request, users_request)
-
-
-def _save_users(request, user_ids):
-    """保存したいuserのidをリストで渡すとuserの情報が保存される"""
-    user_info_status, user_info_result = _get_users(request, user_ids)
-
-    if user_info_status == "error":
-        return user_info_result
-
-    not_saved_user_info_list = user_info_result.json().get("data")
-
-    not_saved_users = []
-    for user_info in not_saved_user_info_list:
-        user = User(
-            id=user_info.get("id"),
-            username=user_info.get("username"),
-            name=user_info.get("name"),
-            profile_image_url=user_info.get("profile_image_url"),
-        )
-        not_saved_users.append(user)
-
-    User.objects.bulk_create(not_saved_users)
 
     return "success", None

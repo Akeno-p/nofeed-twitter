@@ -73,10 +73,10 @@ class TweetManager(models.Manager):
 
         tweets_list = []
         tweet_media_pairs = []
-        for tweet_response in tweet_responses:
-            tweet_id = int(tweet_response.get("id"))
+        for response in tweet_responses:
+            tweet_id = int(response.get("id"))
 
-            media_keys = tweet_response.get("attachments", {}).get("media_keys", [])
+            media_keys = response.get("attachments", {}).get("media_keys", [])
 
             for media_key in media_keys:
                 tweet_media_pairs.append({"media_key": media_key, "tweet_id": tweet_id})
@@ -87,7 +87,7 @@ class TweetManager(models.Manager):
             in_reply_to_tweet_id = None
             in_quoted_to_tweet_id = None
 
-            referenced_tweet_list = tweet_response.get("referenced_tweets")
+            referenced_tweet_list = response.get("referenced_tweets")
 
             if referenced_tweet_list is not None:
                 for referenced_tweet in referenced_tweet_list:
@@ -100,10 +100,10 @@ class TweetManager(models.Manager):
 
             tweet = Tweet(
                 id=tweet_id,
-                author_id=tweet_response.get("author_id"),
-                text=tweet_response.get("text"),
-                created_at=tweet_response.get("created_at"),
-                conversation_id=tweet_response.get("conversation_id"),
+                author_id=response.get("author_id"),
+                text=response.get("text"),
+                created_at=response.get("created_at"),
+                conversation_id=response.get("conversation_id"),
                 in_reply_to_tweet_id=in_reply_to_tweet_id,
                 in_quoted_to_tweet_id=in_quoted_to_tweet_id,
             )
@@ -236,8 +236,8 @@ class TweetMediaManager(models.Manager):
         """
 
         media_list = []
-        for media_response in media_responses:
-            media_key = media_response.get("media_key")
+        for response in media_responses:
+            media_key = response.get("media_key")
             tweet_id = None
             if media_key in saved_tweet_media_keys:
                 continue
@@ -249,12 +249,12 @@ class TweetMediaManager(models.Manager):
             media = TweetMedia(
                 media_key=media_key,
                 tweet_id=tweet_id,
-                media_type=media_response.get("type"),
-                url=media_response.get("url"),
-                alt_text=media_response.get("alt_text"),
-                width=media_response.get("width"),
-                height=media_response.get("height"),
-                duration_ms=media_response.get("duration_ms"),
+                media_type=response.get("type"),
+                url=response.get("url"),
+                alt_text=response.get("alt_text"),
+                width=response.get("width"),
+                height=response.get("height"),
+                duration_ms=response.get("duration_ms"),
             )
             media_list.append(media)
 

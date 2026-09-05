@@ -1,9 +1,33 @@
+from __future__ import annotations
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+from common.x_api_client import UserResponseData
+
+
+class UserManager(models.Manager):
+    def bulk_create_from_responses(
+        self, user_responses: list[UserResponseData]
+    ) -> None:
+        """ユーザー情報を複数保存する"""
+        users = []
+        for response in user_responses:
+            user = User(
+                id=response.get("id"),
+                username=response.get("username"),
+                name=response.get("name"),
+                profile_image_url=response.get("profile_image_url"),
+            )
+            users.append(user)
+
+        User.objects.bulk_create(users)
 
 
 class User(models.Model):
     """ユーザー情報"""
+
+    objects = UserManager()
 
     id = models.BigIntegerField(primary_key=True, help_text="TwitterのユーザーID")
     username = models.CharField(max_length=100, help_text="ユーザー名(@の後ろ)")
