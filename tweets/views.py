@@ -20,7 +20,7 @@ from common.x_api_client import (
     post_tweet_request,
 )
 from tweets.models import Tweet, TweetMedia
-from users.models import User
+from users.models import XUser
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +145,7 @@ def save_all_tweets(request):
 def replies_view(request):
     my_tweets = list(
         Tweet.objects.filter(
-            author=request.user.user_id,
+            author=request.user.x_user_id,
             in_reply_to_tweet_id__isnull=True,
         )
         .prefetch_related("media")
@@ -154,7 +154,7 @@ def replies_view(request):
 
     my_replies = list(
         Tweet.objects.filter(
-            author=request.user.user_id,
+            author=request.user.x_user_id,
             in_reply_to_tweet_id__isnull=False,
         )
         .select_related("author")
@@ -166,7 +166,7 @@ def replies_view(request):
 
     replies = list(
         Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
-        .exclude(author=request.user.user_id)
+        .exclude(author=request.user.x_user_id)
         .select_related("author")
         .prefetch_related("media")
         .order_by("-created_at")
@@ -290,12 +290,12 @@ def save_all_replies(request):
     next_token = None
 
     my_tweet_ids = Tweet.objects.filter(
-        author=request.user.user_id, in_reply_to_tweet_id__isnull=True
+        author=request.user.x_user_id, in_reply_to_tweet_id__isnull=True
     ).values_list("id", flat=True)
 
     last_reply_id = (
         Tweet.objects.filter(conversation_id__in=my_tweet_ids)
-        .exclude(author=request.user.user_id)
+        .exclude(author=request.user.x_user_id)
         .aggregate(last_id=Max("id"))["last_id"]
     )
     last_reply = Tweet.objects.filter(id=last_reply_id).first()
@@ -305,7 +305,7 @@ def save_all_replies(request):
         last_reply_created_at_display = last_reply_created_at.strftime("%Y年%m月%d日")
 
     params = {
-        "query": f"to:{request.user.user.username} -is:retweet -from:{request.user.user.username}",
+        "query": f"to:{request.user.x_user.username} -is:retweet -from:{request.user.x_user.username}",
         "max_results": 100,
         "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
         "expansions": "attachments.media_keys",
@@ -418,14 +418,14 @@ def save_all_replies(request):
 
     my_tweets = list(
         Tweet.objects.filter(
-            author=request.user.user_id,
+            author=request.user.x_user_id,
             in_reply_to_tweet_id__isnull=True,
         ).order_by("-created_at")
     )
 
     my_replies = list(
         Tweet.objects.filter(
-            author=request.user.user_id,
+            author=request.user.x_user_id,
             in_reply_to_tweet_id__isnull=False,
         )
         .select_related("author")
@@ -436,7 +436,7 @@ def save_all_replies(request):
 
     replies = list(
         Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
-        .exclude(author=request.user.user_id)
+        .exclude(author=request.user.x_user_id)
         .select_related("author")
         .prefetch_related("media")
         .order_by("-created_at")
@@ -475,7 +475,7 @@ def _save_replies(request, replies_response_list, replies_media_response_list):
     saved_all_tweet_media_ids = set(
         TweetMedia.objects.values_list("media_key", flat=True)
     )
-    saved_user_ids = set(User.objects.values_list("id", flat=True))
+    saved_user_ids = set(XUser.objects.values_list("id", flat=True))
     for reply_response in replies_response_list:
         reply_id = int(reply_response.get("id"))
         author_id = int(reply_response.get("author_id"))
@@ -522,7 +522,7 @@ def _save_replies(request, replies_response_list, replies_media_response_list):
             return get_users_status, get_users_result
 
         user_responses = get_users_result.json().get("data")
-        User.objects.bulk_create_from_responses(user_responses)
+        XUser.objects.bulk_create_from_responses(user_responses)
 
     Tweet.objects.bulk_create(replies_list)
 

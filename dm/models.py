@@ -6,7 +6,7 @@ class Conversation(models.Model):
 
     id = models.BigAutoField(primary_key=True, help_text="DMの会話ID")
     participant = models.ForeignKey(
-        "users.User",
+        "users.XUser",
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
@@ -37,7 +37,7 @@ class DirectMessage(models.Model):
         help_text="DMの部屋",
     )
     sender = models.ForeignKey(
-        "users.User",
+        "users.XUser",
         blank=True,
         null=True,
         on_delete=models.SET_NULL,

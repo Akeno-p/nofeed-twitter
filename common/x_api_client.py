@@ -67,8 +67,8 @@ class MediaResponseData(TypedDict, total=False):
     duration_ms: int
 
 
-class UserResponseData(TypedDict):
-    """メディア1件分のデータの形
+class XUserResponseData(TypedDict):
+    """Xユーザー1件分のデータの形
     get_users のresponseを .json().get("data",[])した時の形
 
     "id": "ユーザーID",
@@ -214,7 +214,7 @@ def get_all_tweets(
     if next_token:
         params["pagination_token"] = next_token
     response = requests.get(
-        TWITTER_USER_TWEETS_ENDPOINT.format(user_id=request.user.user.id),
+        TWITTER_USER_TWEETS_ENDPOINT.format(user_id=request.user.x_user_id),
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params=params,
     )

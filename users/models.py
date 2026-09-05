@@ -3,31 +3,31 @@ from __future__ import annotations
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from common.x_api_client import UserResponseData
+from common.x_api_client import XUserResponseData
 
 
-class UserManager(models.Manager):
+class XUserManager(models.Manager):
     def bulk_create_from_responses(
-        self, user_responses: list[UserResponseData]
+        self, x_user_responses: list[XUserResponseData]
     ) -> None:
         """ユーザー情報を複数保存する"""
-        users = []
-        for response in user_responses:
-            user = User(
+        x_users = []
+        for response in x_user_responses:
+            x_user = XUser(
                 id=response.get("id"),
                 username=response.get("username"),
                 name=response.get("name"),
                 profile_image_url=response.get("profile_image_url"),
             )
-            users.append(user)
+            x_users.append(x_user)
 
-        User.objects.bulk_create(users)
+        XUser.objects.bulk_create(x_users)
 
 
-class User(models.Model):
+class XUser(models.Model):
     """ユーザー情報"""
 
-    objects = UserManager()
+    objects = XUserManager()
 
     id = models.BigIntegerField(primary_key=True, help_text="TwitterのユーザーID")
     username = models.CharField(max_length=100, help_text="ユーザー名(@の後ろ)")
@@ -37,15 +37,15 @@ class User(models.Model):
     )
 
     class Meta:
-        db_table = "users"
+        db_table = "x_users"
 
 
 class Account(AbstractUser):
     """nofeed-twitter利用者の認証・トークン管理用"""
 
     id = models.BigAutoField(primary_key=True)
-    user = models.OneToOneField(
-        User,
+    x_user = models.OneToOneField(
+        XUser,
         blank=True,
         null=True,
         on_delete=models.SET_NULL,

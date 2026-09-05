@@ -25,7 +25,7 @@ class TweetManager(models.Manager):
     def my_tweets(self, account: Account) -> QuerySet[Tweet]:
         """自分のツイート(リプライを除く)を新しい順で返す"""
         return (
-            self.filter(author=account.user_id, in_reply_to_tweet_id__isnull=True)
+            self.filter(author=account.x_user_id, in_reply_to_tweet_id__isnull=True)
             .select_related("author")
             .prefetch_related("media")
             .order_by("-created_at")
@@ -121,7 +121,7 @@ class Tweet(models.Model):
 
     id = models.BigIntegerField(primary_key=True, help_text="tweetID")
     author = models.ForeignKey(
-        "users.User",
+        "users.XUser",
         blank=True,
         null=True,
         on_delete=models.SET_NULL,

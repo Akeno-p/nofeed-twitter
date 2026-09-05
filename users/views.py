@@ -28,7 +28,7 @@ from .decorators import (
     redirect_to_login_if_no_pending_user,
     redirect_to_tweets_if_logged_in,
 )
-from .models import Account, User
+from .models import Account, XUser
 
 
 @redirect_to_tweets_if_logged_in
@@ -215,8 +215,8 @@ def totp_auth(request):
 @login_required
 def twitter_auth_view(request):
     has_access_token = bool(request.user.access_token)
-    has_relation_user = bool(request.user.user)
-    if has_access_token and has_relation_user:
+    has_relation_x_user = bool(request.user.x_user)
+    if has_access_token and has_relation_x_user:
         return redirect("tweets")
     return render(request, "users/twitter_auth.html")
 
@@ -330,7 +330,7 @@ def twitter_auth_redirect(request):
         access_token=access_token, refresh_token=refresh_token
     )
 
-    if not request.user.user:
+    if not request.user.x_user:
         is_register = _register_user_me(request)
         if not is_register:
             return redirect("twitter_auth_error")
@@ -376,12 +376,12 @@ def _register_user_me(request):
     username = user_data.get("username")
     profile_image_url = user_data.get("profile_image_url")
 
-    user = User(
+    x_user = XUser(
         id=twitter_id, username=username, name=name, profile_image_url=profile_image_url
     )
-    user.save()
+    x_user.save()
 
-    Account.objects.filter(id=request.user.id).update(user=user)
+    Account.objects.filter(id=request.user.id).update(x_user=x_user)
 
     # 一応requestのuser情報を更新しておく
     request.user.refresh_from_db()
