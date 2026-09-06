@@ -42,6 +42,12 @@ class TweetManager(models.Manager):
             .order_by("-created_at")
         )
 
+    def my_tweet_ids(self, account: Account) -> QuerySet[int]:
+        """自分のツイートのidを返す"""
+        return self.filter(
+            author=account.x_user_id, in_reply_to_tweet_id__isnull=True
+        ).values_list("id", flat=True)
+
     def all_tweet_ids(self) -> QuerySet[int]:
         """すべてのツイートのIdを返す"""
         return self.values_list("id", flat=True)
@@ -55,6 +61,16 @@ class TweetManager(models.Manager):
             .select_related("author")
             .prefetch_related("media")
             .order_by("-created_at")
+        )
+
+    def last_reply(self, account: Account) -> Tweet | None:
+        """最新のリプライを返す"""
+        my_tweet_ids = self.my_tweet_ids(account)
+        return (
+            self.filter(conversation_id__in=my_tweet_ids)
+            .exclude(author=account.x_user_id)
+            .order_by("-id")
+            .first()
         )
 
     def get_decorated_replies(self, account: Account) -> list[Tweet]:

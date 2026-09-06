@@ -250,3 +250,45 @@ def get_users(request: HttpRequest, user_ids: list[int]) -> requests.Response:
         },
     )
     return response
+
+
+def get_replies(
+    request: HttpRequest, next_token: str | None = None, since_id: int | None = None
+) -> requests.Response:
+    """自分宛てのリプライを一覧取得するリクエスト
+
+    next_token: 2ページ目以降を取得するときだけ入れる。
+    since_id: このIDより新しいリプライだけを取得したいときに入れる。
+
+    response.json() の結果は下記の形。
+        {
+            "data": [TweetResponseData],
+            "includes": {"media": [MediaResponseData]},
+            "meta": {
+                "result_count": 取得できた件数,
+                "next_token": "次のページがあるときだけ入る"
+            }
+        }
+    ※ 該当するリプライが0件の場合、"data" と "includes" は入らない。
+    """
+    params = {
+        "query": f"to:{request.user.x_user.username} -is:retweet -from:{request.user.x_user.username}",
+        "max_results": 100,
+        "post.fields": "created_at,author_id,conversation_id,referenced_tweets",
+        "expansions": "attachments.media_keys",
+        "media.fields": "url,type,alt_text,width,height,duration_ms",
+    }
+
+    if next_token:
+        params["pagination_token"] = next_token
+
+    if since_id:
+        params["since_id"] = since_id
+
+    response = requests.get(
+        TWITTER_SEARCH_RECENT_ENDPOINT,
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        params=params,
+    )
+
+    return response
