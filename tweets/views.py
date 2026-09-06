@@ -11,6 +11,8 @@ from django.utils import timezone
 from common.utils import request_with_token_refresh, update_tokens
 from common.x_api import TWITTER_SEARCH_RECENT_ENDPOINT
 from common.x_api_client import (
+    MediaResponseData,
+    TweetResponseData,
     get_all_tweets,
     get_tweet,
     get_users,
@@ -116,14 +118,9 @@ def save_all_tweets(request):
         if not next_token:
             break
 
-    saved_tweet_ids = set(Tweet.objects.all_tweet_ids())
-    saved_tweet_media_keys = set(TweetMedia.objects.all_tweet_media_keys())
-
-    tweet_media_pairs = Tweet.objects.bulk_create_from_responses(
-        all_tweet_responses, saved_tweet_ids
-    )
+    tweet_media_pairs = Tweet.objects.bulk_create_from_responses(all_tweet_responses)
     TweetMedia.objects.bulk_create_from_responses(
-        all_tweet_media_responses, saved_tweet_media_keys, tweet_media_pairs
+        all_tweet_media_responses, tweet_media_pairs
     )
 
     my_tweets = list(Tweet.objects.my_tweets(request.user))
@@ -347,93 +344,35 @@ def save_all_replies(request):
     return JsonResponse({"status": status, "message": message, "html": html})
 
 
-def _save_replies(request, replies_response_list, replies_media_response_list):
+def _save_replies(
+    request,
+    replies_response: list[TweetResponseData],
+    replies_media_response: list[MediaResponseData],
+):
     """保存したいreplyのレスポンスをリストにして渡すと、渡したreplyが保存される。
 
     戻り値は、
     第一引数にstatus : error or success
     第二引数にerrorの場合はerror詳細 successの場合はNone
     """
-    replies_list = []
-    media_list = []
-    replies_media_list = []
-    not_saved_user_ids = []
-    saved_all_tweet_ids = set(Tweet.objects.values_list("id", flat=True))
-    saved_all_tweet_media_ids = set(
-        TweetMedia.objects.values_list("media_key", flat=True)
-    )
-    saved_user_ids = set(XUser.objects.values_list("id", flat=True))
-    for reply_response in replies_response_list:
-        reply_id = int(reply_response.get("id"))
-        author_id = int(reply_response.get("author_id"))
-
-        if author_id not in saved_user_ids:
-            not_saved_user_ids.append(author_id)
-
-        media_keys = reply_response.get("attachments", {}).get("media_keys", [])
-        for media_key in media_keys:
-            replies_media_list.append({"tweet_id": reply_id, "media_key": media_key})
-
-        in_reply_to_tweet_id = None
-        in_quoted_to_tweet_id = None
-
-        referenced_tweet_list = reply_response.get("referenced_tweets")
-
-        if referenced_tweet_list is not None:
-            for referenced_tweet in referenced_tweet_list:
-                referenced_tweet_type = referenced_tweet.get("type")
-
-                if referenced_tweet_type == "quoted":
-                    in_quoted_to_tweet_id = referenced_tweet.get("id")
-                elif referenced_tweet_type == "replied_to":
-                    in_reply_to_tweet_id = referenced_tweet.get("id")
-
-        if reply_id not in saved_all_tweet_ids:
-            reply = Tweet(
-                id=reply_id,
-                author_id=reply_response.get("author_id"),
-                text=reply_response.get("text"),
-                created_at=reply_response.get("created_at"),
-                conversation_id=reply_response.get("conversation_id"),
-                in_reply_to_tweet_id=in_reply_to_tweet_id,
-                in_quoted_to_tweet_id=in_quoted_to_tweet_id,
-            )
-            replies_list.append(reply)
+    not_saved_user_ids = XUser.objects.not_saved_author_ids(replies_response)
 
     if not_saved_user_ids:
-        get_users_status, get_users_result = request_with_token_refresh(
+        status, result = request_with_token_refresh(
             request, get_users, not_saved_user_ids
         )
 
-        if get_users_status == "error":
-            return get_users_status, get_users_result
+        if status == "error":
+            return status, result
 
-        user_responses = get_users_result.json().get("data")
-        XUser.objects.bulk_create_from_responses(user_responses)
+        x_user_responses = result.json()["data"]
 
-    Tweet.objects.bulk_create(replies_list)
+        XUser.objects.bulk_create_from_responses(x_user_responses)
 
-    for tweet_media in replies_media_response_list:
-        this_tweet_id = None
-        tweet_media_key = tweet_media.get("media_key")
-        if tweet_media_key in saved_all_tweet_media_ids:
-            continue
+    tweet_media_pairs = Tweet.objects.bulk_create_from_responses(replies_response)
 
-        for m_k_dict in replies_media_list:
-            if m_k_dict["media_key"] == tweet_media_key:
-                this_tweet_id = m_k_dict["tweet_id"]
-
-        media = TweetMedia(
-            media_key=tweet_media.get("media_key"),
-            tweet_id=this_tweet_id,
-            media_type=tweet_media.get("type"),
-            url=tweet_media.get("url"),
-            alt_text=tweet_media.get("alt_text"),
-            width=tweet_media.get("width"),
-            height=tweet_media.get("height"),
-            duration_ms=tweet_media.get("duration_ms"),
-        )
-        media_list.append(media)
-    TweetMedia.objects.bulk_create(media_list)
+    TweetMedia.objects.bulk_create_from_responses(
+        replies_media_response, tweet_media_pairs
+    )
 
     return "success", None
