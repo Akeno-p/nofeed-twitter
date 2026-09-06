@@ -1,6 +1,4 @@
-import json
 import logging
-import re
 
 import requests
 from django.contrib.auth.decorators import login_required
@@ -143,88 +141,12 @@ def save_all_tweets(request):
 
 @login_required
 def replies_view(request):
-    my_tweets = list(
-        Tweet.objects.filter(
-            author=request.user.x_user_id,
-            in_reply_to_tweet_id__isnull=True,
-        )
-        .prefetch_related("media")
-        .order_by("-created_at")
-    )
-
-    my_replies = list(
-        Tweet.objects.filter(
-            author=request.user.x_user_id,
-            in_reply_to_tweet_id__isnull=False,
-        )
-        .select_related("author")
-        .prefetch_related("media")
-        .order_by("-created_at")
-    )
-
-    tweet_ids = [tweet.id for tweet in my_tweets]
-
-    replies = list(
-        Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
-        .exclude(author=request.user.x_user_id)
-        .select_related("author")
-        .prefetch_related("media")
-        .order_by("-created_at")
-    )
-
-    tweets_by_id = {tweet.id: tweet for tweet in my_tweets}
-    my_reply_by_parent_tweet_id = {
-        tweet.in_reply_to_tweet_id: tweet for tweet in my_replies
-    }
-
-    for reply in replies:
-        parent_tweet = tweets_by_id[reply.in_reply_to_tweet_id]
-        my_reply = my_reply_by_parent_tweet_id.get(reply.id)
-
-        _decorate_reply(reply, parent_tweet, my_reply)
-
+    """リプライページを開いた時の処理"""
+    replies = Tweet.objects.get_decorated_replies(request.user)
     return render(request, "tweets/replies.html", {"replies": replies})
 
 
-def _decorate_reply(
-    base_reply: Tweet, parent_tweet: Tweet, my_reply: Tweet | None = None
-):
-    """repliesページの表示用にデータを成形する。
-
-    base_reply : 主役のリプライ
-    parent_tweet : 主役のリプライの送信元ツイート
-    my_reply : 主役リプライに対しての自分のリプライ(未返信の場合はNone)
-    """
-    base_reply.text = _strip_leading_mentions(base_reply.text)
-    base_reply.strip_media_link()
-    base_reply.set_display_created_at()
-    base_reply.in_reply_to_tweet_text = _strip_leading_mentions(
-        parent_tweet.text
-    ).rsplit(" https://t.co", 1)[0]
-
-    parent_tweet_media_list = [media.url for media in parent_tweet.media.all()]
-
-    base_reply.in_reply_to_tweet_media_list = json.dumps(parent_tweet_media_list)
-
-    if my_reply:
-        my_reply.strip_media_link()
-        my_reply.set_display_created_at()
-        base_reply.my_reply = my_reply
-        base_reply.my_reply.display_text = _strip_leading_mentions(
-            base_reply.my_reply.text
-        )
-
-
-def _strip_leading_mentions(text):
-    """replyのテキストのusernameを除去する。
-
-    例
-    変換前 (@username リプライです。)
-    変換後 (リプライです。)
-    """
-    return re.sub(r"^@\w+\s+", "", text)
-
-
+@login_required
 def post_reply(request):
     """リプライ返信ボタンを押した時の処理"""
     reply_text = request.POST.get("replyText")
@@ -276,7 +198,7 @@ def post_reply(request):
     my_reply = Tweet.objects.get(id=posted_reply_id)
     reply = Tweet.objects.get(id=reply_id)
     parent_tweet = Tweet.objects.get(id=reply.in_reply_to_tweet_id)
-    _decorate_reply(reply, parent_tweet, my_reply)
+    reply.decorate_reply(parent_tweet, my_reply)
 
     html = render_to_string("tweets/_replies.html", {"reply": reply})
 
@@ -416,42 +338,7 @@ def save_all_replies(request):
         if save_replies_status == "error":
             return JsonResponse(save_replies_result)
 
-    my_tweets = list(
-        Tweet.objects.filter(
-            author=request.user.x_user_id,
-            in_reply_to_tweet_id__isnull=True,
-        ).order_by("-created_at")
-    )
-
-    my_replies = list(
-        Tweet.objects.filter(
-            author=request.user.x_user_id,
-            in_reply_to_tweet_id__isnull=False,
-        )
-        .select_related("author")
-        .order_by("-created_at")
-    )
-
-    tweet_ids = [tweet.id for tweet in my_tweets]
-
-    replies = list(
-        Tweet.objects.filter(in_reply_to_tweet_id__in=tweet_ids)
-        .exclude(author=request.user.x_user_id)
-        .select_related("author")
-        .prefetch_related("media")
-        .order_by("-created_at")
-    )
-
-    tweets_by_id = {tweet.id: tweet for tweet in my_tweets}
-    my_reply_by_parent_tweet_id = {
-        tweet.in_reply_to_tweet_id: tweet for tweet in my_replies
-    }
-
-    for reply in replies:
-        parent_tweet = tweets_by_id[reply.in_reply_to_tweet_id]
-        my_reply = my_reply_by_parent_tweet_id.get(reply.id)
-
-        _decorate_reply(reply, parent_tweet, my_reply)
+    replies = Tweet.objects.get_decorated_replies(request.user)
 
     html = render_to_string(
         "tweets/_replies_list.html", {"replies": replies}, request=request

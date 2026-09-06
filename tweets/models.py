@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from typing import TypedDict
 
 from django.db import models
@@ -31,9 +33,51 @@ class TweetManager(models.Manager):
             .order_by("-created_at")
         )
 
+    def my_replies(self, account: Account) -> QuerySet[Tweet]:
+        """自分のリプライ(ツイートを除く)を新しい順で返す"""
+        return (
+            self.filter(author=account.x_user_id, in_reply_to_tweet_id__isnull=False)
+            .select_related("author")
+            .prefetch_related("media")
+            .order_by("-created_at")
+        )
+
     def all_tweet_ids(self) -> QuerySet[int]:
         """すべてのツイートのIdを返す"""
         return self.values_list("id", flat=True)
+
+    def replies(self, my_tweets: list[Tweet]) -> QuerySet[Tweet]:
+        """自分に対してのリプライを新しい順で返す"""
+        my_tweet_ids = [my_tweet.id for my_tweet in my_tweets]
+
+        return (
+            self.filter(in_reply_to_tweet_id__in=my_tweet_ids)
+            .select_related("author")
+            .prefetch_related("media")
+            .order_by("-created_at")
+        )
+
+    def get_decorated_replies(self, account: Account) -> list[Tweet]:
+        """表示用に成形されたリプライを新しい順に返す"""
+        my_tweets = list(self.my_tweets(account))
+
+        tweets_by_id = {tweet.id: tweet for tweet in my_tweets}
+
+        my_replies = list(self.my_replies(account))
+
+        my_reply_by_parent_tweet_id = {
+            my_reply.in_reply_to_tweet_id: my_reply for my_reply in my_replies
+        }
+
+        replies = list(self.replies(my_tweets))
+
+        for reply in replies:
+            parent_tweet = tweets_by_id[reply.in_reply_to_tweet_id]
+            my_reply = my_reply_by_parent_tweet_id.get(reply.id)
+
+            reply.decorate_reply(parent_tweet, my_reply)
+
+        return replies
 
     def create_from_response(self, created_tweet: TweetResponseData) -> Tweet:
         """ツイートを1件保存する"""
@@ -183,6 +227,40 @@ class Tweet(models.Model):
             return
 
         self.display_created_at = created_date
+
+    def text_without_mentions(self) -> str:
+        """replyのテキストのusernameを除去する。
+
+        例
+        変換前 (@username リプライです。)
+        変換後 (リプライです。)
+        """
+        return re.sub(r"^@\w+\s+", "", self.text)
+
+    def decorate_reply(
+        self, parent_tweet: Tweet, my_reply: Tweet | None = None
+    ) -> None:
+        """repliesページの表示用にデータを成形する。
+
+        self : 主役のリプライ
+        parent_tweet : 主役のリプライの送信元ツイート
+        my_reply : 主役リプライに対しての自分のリプライ(未返信の場合はNone)
+        """
+        self.text = self.text_without_mentions()
+        self.strip_media_link()
+        self.set_display_created_at()
+        parent_tweet.strip_media_link()
+        self.in_reply_to_tweet_text = parent_tweet.text_without_mentions()
+
+        parent_tweet_media_list = [media.url for media in parent_tweet.media.all()]
+
+        self.in_reply_to_tweet_media_list = json.dumps(parent_tweet_media_list)
+
+        if my_reply:
+            my_reply.strip_media_link()
+            my_reply.set_display_created_at()
+            self.my_reply = my_reply
+            self.my_reply.display_text = my_reply.text_without_mentions()
 
 
 class TweetMediaManager(models.Manager):
