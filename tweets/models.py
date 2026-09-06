@@ -73,6 +73,16 @@ class TweetManager(models.Manager):
             .first()
         )
 
+    def get_decorated_reply(self, posted_reply_id, reply_id) -> Tweet:
+        """表示用に成形されたリプライを1件返す"""
+        reply = self.get(id=reply_id)
+        my_reply = self.get(id=posted_reply_id)
+        parent_tweet = self.get(id=reply.in_reply_to_tweet_id)
+
+        reply.decorate_reply(parent_tweet, my_reply)
+
+        return reply
+
     def get_decorated_replies(self, account: Account) -> list[Tweet]:
         """表示用に成形されたリプライを新しい順に返す"""
         my_tweets = list(self.my_tweets(account))
@@ -119,6 +129,9 @@ class TweetManager(models.Manager):
         )
 
         tweet.save()
+
+        # created_atをstrからdatetimeに更新するため
+        tweet.refresh_from_db()
 
         return tweet
 

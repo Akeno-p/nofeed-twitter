@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth.decorators import login_required
+from django.core.files.uploadedfile import UploadedFile
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
@@ -40,16 +41,12 @@ def post_tweet(request):
     tweet_text = request.POST.get("tweetText")
     images_list = request.FILES.getlist("images")
 
-    media_ids = []
+    post_media_status, post_media_result = _post_media(request, images_list)
 
-    for image in images_list:
-        post_image_status, post_image_result = request_with_token_refresh(
-            request, post_media_request, image
-        )
-        if post_image_status == "error":
-            return JsonResponse(post_image_result)
+    if post_media_status == "error":
+        return JsonResponse(post_media_result)
 
-        media_ids.append(post_image_result.json()["data"]["id"])
+    media_ids = post_media_result
 
     payload = {"text": tweet_text}
     if media_ids:
@@ -79,13 +76,7 @@ def post_tweet(request):
 
     media_responses = get_tweet_result.json().get("includes", {}).get("media", [])
 
-    saved_tweet_media_keys = set(TweetMedia.objects.all_tweet_media_keys())
-    TweetMedia.objects.bulk_create_for_tweet(
-        media_responses, saved_tweet_media_keys, saved_tweet.id
-    )
-
-    # tweetのcreated_atをstrからdatetimeに更新するため
-    saved_tweet.refresh_from_db()
+    TweetMedia.objects.bulk_create_for_tweet(media_responses, saved_tweet.id)
 
     saved_tweet.strip_media_link()
     saved_tweet.set_display_created_at()
@@ -109,7 +100,7 @@ def save_all_tweets(request):
             return JsonResponse(result)
 
         body = result.json()
-        all_tweet_responses.extend(body["data"])
+        all_tweet_responses.extend(body.get("data", []))
         all_tweet_media_responses.extend(body.get("includes", {}).get("media", []))
         next_token = body["meta"].get("next_token")
 
@@ -148,16 +139,12 @@ def post_reply(request):
     reply_id = request.POST.get("replyId")
     images_list = request.FILES.getlist("images")
 
-    media_ids = []
+    post_media_status, post_media_result = _post_media(request, images_list)
 
-    for image in images_list:
-        image_status, image_result = request_with_token_refresh(
-            request, post_media_request, image
-        )
-        if image_status == "error":
-            return JsonResponse(image_result)
+    if post_media_status == "error":
+        return JsonResponse(post_media_result)
 
-        media_ids.append(image_result.json()["data"]["id"])
+    media_ids = post_media_result
 
     payload = {"text": reply_text, "reply": {"in_reply_to_tweet_id": reply_id}}
     if media_ids:
@@ -190,10 +177,7 @@ def post_reply(request):
     if save_replies_status == "error":
         return JsonResponse(save_replies_result)
 
-    my_reply = Tweet.objects.get(id=posted_reply_id)
-    reply = Tweet.objects.get(id=reply_id)
-    parent_tweet = Tweet.objects.get(id=reply.in_reply_to_tweet_id)
-    reply.decorate_reply(parent_tweet, my_reply)
+    reply = Tweet.objects.get_decorated_reply(posted_reply_id, reply_id)
 
     html = render_to_string("tweets/_replies.html", {"reply": reply})
 
@@ -292,7 +276,6 @@ def save_all_replies(request):
     return JsonResponse({"status": status, "message": message, "html": html})
 
 
-@login_required
 def _save_replies(
     request,
     replies_response: list[TweetResponseData],
@@ -325,3 +308,25 @@ def _save_replies(
     )
 
     return "success", None
+
+
+def _post_media(
+    request, images_list: list[UploadedFile]
+) -> tuple[str, list[str] | dict]:
+    """アップロードしたい画像をリストにして渡すと、渡した画像がXにアップロードされる。
+
+    戻り値は、
+    第一引数にstatus : error or success
+    第二引数にerrorの場合はerror詳細 successの場合はアップロードされた画像のmedia_idのリスト
+    """
+
+    media_ids = []
+
+    for image in images_list:
+        status, result = request_with_token_refresh(request, post_media_request, image)
+        if status == "error":
+            return "error", result
+
+        media_ids.append(result.json()["data"]["id"])
+
+    return "success", media_ids

@@ -185,16 +185,6 @@ def get_all_tweets(
 ) -> requests.Response:
     """自分のツイートを一覧取得するリクエスト
 
-    params: 取得条件を下記の形で入れる。
-    "pagination_token" は2ページ目以降を取得するときだけ入れる。
-    {
-        "max_results": 1回で取得する件数(最大100),
-        "post.fields": "取得するツイートのフィールド",
-        "expansions": "attachments.media_keys",
-        "media.fields": "取得するメディアのフィールド"
-        "pagination_token": "前回レスポンスの meta.next_token"
-    }
-
     response.json()の結果は下記の形
     {
         "data": [TweetResponseData],
