@@ -109,12 +109,12 @@
     <div class="border-t-2 py-6 border-slate-300 flex">
       <img
         class="rounded-full mr-3"
-        src="{{ user.user.profile_image_url }}"
+        src="{{ user.x_user.profile_image_url }}"
         alt="自分のプロフィールアイコン"
       />
       <div>
-        <p class="text-xl font-semibold">{{ user.user.name }}</p>
-        <p class="font-light text-slate-500">@{{ user.user.username }}</p>
+        <p class="text-xl font-semibold">{{ user.x_user.name }}</p>
+        <p class="font-light text-slate-500">@{{ user.x_user.username }}</p>
       </div>
       <div class="flex flex-1 items-center justify-end mr-1">
         <div class="relative">
@@ -182,7 +182,7 @@
       <div>
         <img
           class="rounded-full"
-          src="{{ user.user.profile_image_url }}"
+          src="{{ user.x_user.profile_image_url }}"
           alt="アイコン"
         />
       </div>
