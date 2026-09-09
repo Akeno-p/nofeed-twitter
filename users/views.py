@@ -111,8 +111,6 @@ def two_factor_qrcode_view(request):
     if totp_secret:
         return redirect("two_factor_auth")
 
-    user_name = Account.objects.get(id=user_id).username
-
     # すでにqrコード読み取り済みで[two_factor_qrcode.html]ページをリロードしてしまった場合、
     # 秘密鍵が一致しなくなるため
     if not request.session.get("pending_totp_secret"):
@@ -123,7 +121,7 @@ def two_factor_qrcode_view(request):
     request.session["pending_totp_secret"] = pending_totp_secret
 
     url = pyotp.TOTP(pending_totp_secret).provisioning_uri(
-        name=user_name, issuer_name="nofeed-twitter"
+        name=account.username, issuer_name="nofeed-twitter"
     )
 
     qrcode_img = qrcode.make(url)
