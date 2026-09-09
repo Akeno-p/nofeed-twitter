@@ -179,14 +179,11 @@ def totp_auth(request):
     pending_user_id = request.session.get("pending_user_id")
     user = Account.objects.get(id=pending_user_id)
 
-    totp_secret = user.totp_secret
-
-    totp = pyotp.TOTP(totp_secret)
+    totp = pyotp.TOTP(user.totp_secret)
 
     if totp.verify(totp_auth_number):
         login(request, user)
-        has_access_token = bool(user.access_token)
-        if not has_access_token:
+        if not user.access_token:
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
             )
