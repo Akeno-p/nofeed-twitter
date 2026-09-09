@@ -17,7 +17,7 @@ from common.x_api import (
     TWITTER_TOKEN_ENDPOINT,
     TWITTER_USERS_ME_ENDPOINT,
 )
-from common.x_api_client import build_auth_url
+from common.x_api_client import build_auth_url, post_token_request
 
 from .decorators import (
     redirect_to_login_if_no_pending_user,
@@ -220,33 +220,18 @@ def twitter_auth_start(request):
 def twitter_auth_redirect(request):
     code = request.GET.get("code")
     state = request.GET.get("state")
-
     session_state = request.session.get("state")
+    code_verifier = request.session.get("code_verifier")
 
     if state is None or state != session_state:
         return redirect("twitter_auth_error")
 
-    twitter_token_endpoint_data = {
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": TWITTER_REDIRECT_URI,
-        "client_id": TWITTER_CLIENT_ID,
-        "code_verifier": request.session.get("code_verifier"),
-    }
+    response = post_token_request(code, code_verifier)
 
-    token_response = requests.post(
-        TWITTER_TOKEN_ENDPOINT,
-        data=twitter_token_endpoint_data,
-        auth=(
-            TWITTER_CLIENT_ID,
-            TWITTER_CLIENT_SECRET,
-        ),
-    )
-
-    if token_response.status_code != 200:
+    if response.status_code != 200:
         return redirect("twitter_auth_error")
 
-    token_data = token_response.json()
+    token_data = response.json()
 
     access_token = token_data.get("access_token")
     refresh_token = token_data.get("refresh_token")

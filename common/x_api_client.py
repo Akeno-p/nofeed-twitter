@@ -13,10 +13,12 @@ from django.http import HttpRequest
 from common.x_api import (
     TWITTER_AUTH_ENDPOINT,
     TWITTER_CLIENT_ID,
+    TWITTER_CLIENT_SECRET,
     TWITTER_GET_TWEET_ENDPOINT,
     TWITTER_MEDIA_ENDPOINT,
     TWITTER_REDIRECT_URI,
     TWITTER_SEARCH_RECENT_ENDPOINT,
+    TWITTER_TOKEN_ENDPOINT,
     TWITTER_TWEET_ENDPOINT,
     TWITTER_USER_TWEETS_ENDPOINT,
     TWITTER_USERS_ENDPOINT,
@@ -134,6 +136,38 @@ def build_auth_url(state: str, code_challenge: str) -> str:
     twitter_auth_url = TWITTER_AUTH_ENDPOINT + "?" + encoded_params
 
     return twitter_auth_url
+
+
+def post_token_request(code: str, code_verifier: str) -> requests.Response:
+    """認可コードをアクセストークンと交換するリクエスト
+
+    code: 認証後リダイレクトで返ってくるコード。 X側がどの承認か特定するのに使用する。
+    code_verifier: PKCE 用の値。code_challengeのハッシュ前の値が入っている。
+
+    response.json() の結果は下記の形。
+    {
+        "token_type": "bearer",
+        "expires_in": アクセストークンの有効秒数,
+        "access_token": "アクセストークン",
+        "refresh_token": "リフレッシュトークン",
+        "scope": "許可されたスコープ"
+    }
+    """
+    response = requests.post(
+        TWITTER_TOKEN_ENDPOINT,
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": TWITTER_REDIRECT_URI,
+            "client_id": TWITTER_CLIENT_ID,
+            "code_verifier": code_verifier,
+        },
+        auth=(
+            TWITTER_CLIENT_ID,
+            TWITTER_CLIENT_SECRET,
+        ),
+    )
+    return response
 
 
 def post_media_request(request: HttpRequest, image: UploadedFile) -> requests.Response:
