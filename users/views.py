@@ -196,9 +196,7 @@ def totp_auth(request):
 
 @login_required
 def twitter_auth_view(request):
-    has_access_token = bool(request.user.access_token)
-    has_relation_x_user = bool(request.user.x_user)
-    if has_access_token and has_relation_x_user:
+    if request.user.access_token and request.user.x_user:
         return redirect("tweets")
     return render(request, "users/twitter_auth.html")
 
