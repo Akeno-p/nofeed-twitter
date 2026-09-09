@@ -1,5 +1,3 @@
-import base64
-import hashlib
 import secrets
 from urllib.parse import urlencode
 
@@ -28,6 +26,7 @@ from .decorators import (
 )
 from .models import Account, XUser
 from .totp import make_qrcode_b64
+from .x_oauth import make_code_challenge
 
 
 @redirect_to_tweets_if_logged_in
@@ -209,7 +208,7 @@ def twitter_auth_start(request):
     state = secrets.token_urlsafe(16)
     code_verifier = secrets.token_urlsafe(64)
 
-    code_challenge = _sha256_base64url(code_verifier)
+    code_challenge = make_code_challenge(code_verifier)
 
     request.session["state"] = state
     request.session["code_verifier"] = code_verifier
@@ -255,18 +254,6 @@ def twitter_auth_start(request):
     twitter_auth_url = TWITTER_AUTH_ENDPOINT + "?" + encoded_params
 
     return JsonResponse({"redirect_url": twitter_auth_url})
-
-
-def _sha256_base64url(code_verifier):
-    """sha256のハッシュ値をbase64url形式に直した値を返す。"""
-
-    code_challenge = code_verifier.encode()
-    code_challenge = hashlib.sha256(code_challenge).digest()
-    code_challenge = base64.urlsafe_b64encode(code_challenge)
-    code_challenge = code_challenge.decode()
-    code_challenge = code_challenge.rstrip("=")
-
-    return code_challenge
 
 
 @login_required
