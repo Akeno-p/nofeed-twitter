@@ -1,11 +1,9 @@
 import base64
 import hashlib
-import io
 import secrets
 from urllib.parse import urlencode
 
 import pyotp
-import qrcode
 import requests
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -29,6 +27,7 @@ from .decorators import (
     redirect_to_tweets_if_logged_in,
 )
 from .models import Account, XUser
+from .totp import make_qrcode_b64
 
 
 @redirect_to_tweets_if_logged_in
@@ -120,16 +119,7 @@ def two_factor_qrcode_view(request):
 
     request.session["pending_totp_secret"] = pending_totp_secret
 
-    url = pyotp.TOTP(pending_totp_secret).provisioning_uri(
-        name=account.username, issuer_name="nofeed-twitter"
-    )
-
-    qrcode_img = qrcode.make(url)
-
-    buffer = io.BytesIO()
-
-    qrcode_img.save(buffer)
-    qrcode_b64 = base64.b64encode(buffer.getvalue()).decode()
+    qrcode_b64 = make_qrcode_b64(account.username, pending_totp_secret)
 
     return render(
         request,
