@@ -1,5 +1,4 @@
 import secrets
-from urllib.parse import urlencode
 
 import pyotp
 import requests
@@ -12,13 +11,13 @@ from django.views.decorators.http import require_POST
 
 from common.utils import update_tokens
 from common.x_api import (
-    TWITTER_AUTH_ENDPOINT,
     TWITTER_CLIENT_ID,
     TWITTER_CLIENT_SECRET,
     TWITTER_REDIRECT_URI,
     TWITTER_TOKEN_ENDPOINT,
     TWITTER_USERS_ME_ENDPOINT,
 )
+from common.x_api_client import build_auth_url
 
 from .decorators import (
     redirect_to_login_if_no_pending_user,
@@ -207,51 +206,12 @@ def twitter_auth_start(request):
     # token_urlsafeの引数は文字数ではなくバイト数なので(16)は16文字という意味ではない。
     state = secrets.token_urlsafe(16)
     code_verifier = secrets.token_urlsafe(64)
-
     code_challenge = make_code_challenge(code_verifier)
+
+    twitter_auth_url = build_auth_url(state, code_challenge)
 
     request.session["state"] = state
     request.session["code_verifier"] = code_verifier
-
-    # 現状このアプリを使用するのは自分だけの想定なので、とりあえず全部の権限をとりあえず列挙している。
-    # アプリが完成したら不要だった権限は消していいかもしれない。
-    TWITTER_AUTH_ALL_SCOPE = (
-        "tweet.read "
-        "tweet.write "
-        "tweet.moderate.write "
-        "users.read "
-        "users.email "
-        "follows.read "
-        "follows.write "
-        "offline.access "
-        "space.read "
-        "mute.read "
-        "mute.write "
-        "like.read "
-        "like.write "
-        "list.read "
-        "list.write "
-        "block.read "
-        "block.write "
-        "bookmark.read "
-        "bookmark.write "
-        "dm.read dm.write "
-        "media.write"
-    )
-
-    params = {
-        "response_type": "code",
-        "client_id": TWITTER_CLIENT_ID,
-        "redirect_uri": TWITTER_REDIRECT_URI,
-        "scope": TWITTER_AUTH_ALL_SCOPE,
-        "state": state,
-        "code_challenge": code_challenge,
-        "code_challenge_method": "S256",
-    }
-
-    encoded_params = urlencode(params)
-
-    twitter_auth_url = TWITTER_AUTH_ENDPOINT + "?" + encoded_params
 
     return JsonResponse({"redirect_url": twitter_auth_url})
 
