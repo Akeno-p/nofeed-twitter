@@ -115,14 +115,14 @@ def two_factor_qrcode_view(request):
 
     # すでにqrコード読み取り済みで[two_factor_qrcode.html]ページをリロードしてしまった場合、
     # 秘密鍵が一致しなくなるため
-    if not request.session.get("interim_totp_secret"):
-        interim_totp_secret = pyotp.random_base32()
+    if not request.session.get("pending_totp_secret"):
+        pending_totp_secret = pyotp.random_base32()
     else:
-        interim_totp_secret = request.session.get("interim_totp_secret")
+        pending_totp_secret = request.session.get("pending_totp_secret")
 
-    request.session["interim_totp_secret"] = interim_totp_secret
+    request.session["pending_totp_secret"] = pending_totp_secret
 
-    url = pyotp.TOTP(interim_totp_secret).provisioning_uri(
+    url = pyotp.TOTP(pending_totp_secret).provisioning_uri(
         name=user_name, issuer_name="nofeed-twitter"
     )
 
@@ -149,14 +149,14 @@ def verify_two_factor_code(request):
     正しい場合はAccount.totp_secretに保存する。
     """
     two_factor_code = request.POST.get("twoFactorCode")
-    interim_totp_secret = request.session.get("interim_totp_secret")
+    pending_totp_secret = request.session.get("pending_totp_secret")
 
-    totp = pyotp.TOTP(interim_totp_secret)
+    totp = pyotp.TOTP(pending_totp_secret)
 
     if totp.verify(two_factor_code):
         pending_user_id = request.session.get("pending_user_id")
         user = Account.objects.get(id=pending_user_id)
-        user.totp_secret = interim_totp_secret
+        user.totp_secret = pending_totp_secret
         user.save(update_fields=["totp_secret"])
 
         login(request, user)
