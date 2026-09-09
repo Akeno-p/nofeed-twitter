@@ -236,9 +236,7 @@ def twitter_auth_redirect(request):
     access_token = token_data.get("access_token")
     refresh_token = token_data.get("refresh_token")
 
-    user_id = request.user.id
-
-    Account.objects.filter(id=user_id).update(
+    Account.objects.filter(id=request.user.id).update(
         access_token=access_token, refresh_token=refresh_token
     )
 
