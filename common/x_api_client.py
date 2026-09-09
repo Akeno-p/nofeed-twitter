@@ -22,6 +22,7 @@ from common.x_api import (
     TWITTER_TWEET_ENDPOINT,
     TWITTER_USER_TWEETS_ENDPOINT,
     TWITTER_USERS_ENDPOINT,
+    TWITTER_USERS_ME_ENDPOINT,
 )
 
 
@@ -167,6 +168,28 @@ def post_token_request(code: str, code_verifier: str) -> requests.Response:
             TWITTER_CLIENT_SECRET,
         ),
     )
+    return response
+
+
+def get_me(request: HttpRequest) -> requests.Response:
+    """自分のユーザー情報を取得するリクエスト
+
+    response.json() の結果は下記の形。
+    {
+        "data": {
+            "id": "ユーザーID",
+            "name": "表示名",
+            "username": "ユーザー名(@の後ろ)",
+            "profile_image_url": "アイコン画像のURL"
+        }
+    }
+    """
+    response = requests.get(
+        TWITTER_USERS_ME_ENDPOINT,
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        params={"user.fields": "profile_image_url"},
+    )
+
     return response
 
 

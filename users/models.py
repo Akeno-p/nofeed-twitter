@@ -66,6 +66,10 @@ class AccountManager(UserManager):
             access_token=access_token, refresh_token=refresh_token
         )
 
+    def update_x_user(self, user_id: int, x_user: XUser) -> None:
+        """x_userを更新する。戻り値はない。"""
+        self.filter(id=user_id).update(x_user=x_user)
+
 
 class Account(AbstractUser):
     """nofeed-twitter利用者の認証・トークン管理用"""

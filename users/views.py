@@ -1,7 +1,6 @@
 import secrets
 
 import pyotp
-import requests
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -9,15 +8,8 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from common.utils import update_tokens
-from common.x_api import (
-    TWITTER_CLIENT_ID,
-    TWITTER_CLIENT_SECRET,
-    TWITTER_REDIRECT_URI,
-    TWITTER_TOKEN_ENDPOINT,
-    TWITTER_USERS_ME_ENDPOINT,
-)
-from common.x_api_client import build_auth_url, post_token_request
+from common.utils import request_with_token_refresh
+from common.x_api_client import build_auth_url, get_me, post_token_request
 
 from .decorators import (
     redirect_to_login_if_no_pending_user,
@@ -238,8 +230,8 @@ def twitter_auth_redirect(request):
     )
 
     if not request.user.x_user:
-        is_register = _register_user_me(request)
-        if not is_register:
+        status = _register_x_user(request)
+        if status == "error":
             return redirect("twitter_auth_error")
 
     return redirect("tweets")
@@ -249,48 +241,30 @@ def twitter_auth_error_view(request):
     return render(request, "users/twitter_auth_error.html")
 
 
-def _register_user_me(request):
+def _register_x_user(request):
     """ログイン中のユーザー自身のTwitterユーザー情報を取得し、DBに登録する。"""
 
     # 呼ぶタイミングによってuserの情報が古く、有効なaccess_tokenが存在しない場合があるため
     request.user.refresh_from_db()
 
-    user_info_response = requests.get(
-        TWITTER_USERS_ME_ENDPOINT,
-        headers={"Authorization": f"Bearer {request.user.access_token}"},
-        params={"user.fields": "profile_image_url"},
-    )
+    status, result = request_with_token_refresh(request, get_me)
 
-    if user_info_response.status_code == 401:
-        is_update_tokens = update_tokens(request)
+    if status == "error":
+        return status
 
-        if not is_update_tokens:
-            return False
-
-        user_info_response = requests.get(
-            TWITTER_USERS_ME_ENDPOINT,
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            params={"user.fields": "profile_image_url"},
-        )
-
-    if user_info_response.status_code != 200:
-        return False
-
-    user_info_dict = user_info_response.json()
-    user_data = user_info_dict.get("data")
-    twitter_id = user_data.get("id")
-    name = user_data.get("name")
-    username = user_data.get("username")
-    profile_image_url = user_data.get("profile_image_url")
-
+    data = result.json()["data"]
     x_user = XUser(
-        id=twitter_id, username=username, name=name, profile_image_url=profile_image_url
+        id=data.get("id"),
+        username=data.get("username"),
+        name=data.get("name"),
+        profile_image_url=data.get("profile_image_url"),
     )
+
     x_user.save()
 
-    Account.objects.filter(id=request.user.id).update(x_user=x_user)
+    Account.objects.update_x_user(request.user.id, x_user)
 
     # 一応requestのuser情報を更新しておく
     request.user.refresh_from_db()
 
-    return True
+    return status
