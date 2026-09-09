@@ -103,13 +103,12 @@ def do_login(request):
 def two_factor_qrcode_view(request):
     user_id = request.session.get("pending_user_id")
 
-    has_totp_secret = bool(
-        Account.objects.filter(id=user_id).values_list("totp_secret", flat=True).first()
-    )
+    account = Account.objects.get_account(user_id)
+    totp_secret = account.totp_secret
 
     # パスワードとユーザー名が流出した場合、login.htmlでパスワードとユーザー名を入力後
     # [users/two_factor_qrcode/]に直接アクセスすることで、秘密鍵を再設定できてしまうのを防ぐため
-    if has_totp_secret:
+    if totp_secret:
         return redirect("two_factor_auth")
 
     user_name = Account.objects.get(id=user_id).username
