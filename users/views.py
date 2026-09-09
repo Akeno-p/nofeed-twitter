@@ -226,7 +226,7 @@ def twitter_auth_redirect(request):
     token_data = response.json()
 
     Account.objects.update_token(
-        request.user.id, token_data["access_token"], token_data["refresh_token"]
+        request.user, token_data["access_token"], token_data["refresh_token"]
     )
 
     if not request.user.x_user:
@@ -262,7 +262,7 @@ def _register_x_user(request):
 
     x_user.save()
 
-    Account.objects.update_x_user(request.user.id, x_user)
+    Account.objects.update_x_user(request.user, x_user)
 
     # 一応requestのuser情報を更新しておく
     request.user.refresh_from_db()

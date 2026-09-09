@@ -60,15 +60,17 @@ class XUser(models.Model):
 
 
 class AccountManager(UserManager):
-    def update_token(self, user_id: int, access_token: str, refresh_token: str) -> None:
+    def update_token(
+        self, account: Account, access_token: str, refresh_token: str
+    ) -> None:
         """トークンを更新する。 戻り値はない。"""
-        self.filter(id=user_id).update(
+        self.filter(id=account.id).update(
             access_token=access_token, refresh_token=refresh_token
         )
 
-    def update_x_user(self, user_id: int, x_user: XUser) -> None:
+    def update_x_user(self, account: Account, x_user: XUser) -> None:
         """x_userを更新する。戻り値はない。"""
-        self.filter(id=user_id).update(x_user=x_user)
+        self.filter(id=account.id).update(x_user=x_user)
 
 
 class Account(AbstractUser):
