@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.contrib.auth.models import AbstractUser, UserManager
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import QuerySet
 
@@ -59,16 +59,8 @@ class XUser(models.Model):
         db_table = "x_users"
 
 
-class AccountManager(UserManager):
-    def get_account(self, user_id) -> QuerySet[str]:
-        """アカウントを返す"""
-        return self.get(id=user_id)
-
-
 class Account(AbstractUser):
     """nofeed-twitter利用者の認証・トークン管理用"""
-
-    objects = AccountManager()
 
     id = models.BigAutoField(primary_key=True)
     x_user = models.OneToOneField(

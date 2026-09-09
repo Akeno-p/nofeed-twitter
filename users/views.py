@@ -102,7 +102,7 @@ def do_login(request):
 def two_factor_qrcode_view(request):
     user_id = request.session.get("pending_user_id")
 
-    account = Account.objects.get_account(user_id)
+    account = Account.objects.get(id=user_id)
     totp_secret = account.totp_secret
 
     # パスワードとユーザー名が流出した場合、login.htmlでパスワードとユーザー名を入力後
