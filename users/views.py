@@ -1,11 +1,9 @@
 import base64
 import hashlib
-import io
 import secrets
 from urllib.parse import urlencode
 
 import pyotp
-import qrcode
 import requests
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -29,6 +27,7 @@ from .decorators import (
     redirect_to_tweets_if_logged_in,
 )
 from .models import Account, XUser
+from .totp import make_qrcode_b64
 
 
 @redirect_to_tweets_if_logged_in
@@ -103,36 +102,24 @@ def do_login(request):
 def two_factor_qrcode_view(request):
     user_id = request.session.get("pending_user_id")
 
-    has_totp_secret = bool(
-        Account.objects.filter(id=user_id).values_list("totp_secret", flat=True).first()
-    )
+    account = Account.objects.get(id=user_id)
+    totp_secret = account.totp_secret
 
     # パスワードとユーザー名が流出した場合、login.htmlでパスワードとユーザー名を入力後
     # [users/two_factor_qrcode/]に直接アクセスすることで、秘密鍵を再設定できてしまうのを防ぐため
-    if has_totp_secret:
+    if totp_secret:
         return redirect("two_factor_auth")
-
-    user_name = Account.objects.get(id=user_id).username
 
     # すでにqrコード読み取り済みで[two_factor_qrcode.html]ページをリロードしてしまった場合、
     # 秘密鍵が一致しなくなるため
-    if not request.session.get("interim_totp_secret"):
-        interim_totp_secret = pyotp.random_base32()
+    if not request.session.get("pending_totp_secret"):
+        pending_totp_secret = pyotp.random_base32()
     else:
-        interim_totp_secret = request.session.get("interim_totp_secret")
+        pending_totp_secret = request.session.get("pending_totp_secret")
 
-    request.session["interim_totp_secret"] = interim_totp_secret
+    request.session["pending_totp_secret"] = pending_totp_secret
 
-    url = pyotp.TOTP(interim_totp_secret).provisioning_uri(
-        name=user_name, issuer_name="nofeed-twitter"
-    )
-
-    qrcode_img = qrcode.make(url)
-
-    buffer = io.BytesIO()
-
-    qrcode_img.save(buffer)
-    qrcode_b64 = base64.b64encode(buffer.getvalue()).decode()
+    qrcode_b64 = make_qrcode_b64(account.username, pending_totp_secret)
 
     return render(
         request,
@@ -150,14 +137,14 @@ def verify_two_factor_code(request):
     正しい場合はAccount.totp_secretに保存する。
     """
     two_factor_code = request.POST.get("twoFactorCode")
-    interim_totp_secret = request.session.get("interim_totp_secret")
+    pending_totp_secret = request.session.get("pending_totp_secret")
 
-    totp = pyotp.TOTP(interim_totp_secret)
+    totp = pyotp.TOTP(pending_totp_secret)
 
     if totp.verify(two_factor_code):
         pending_user_id = request.session.get("pending_user_id")
         user = Account.objects.get(id=pending_user_id)
-        user.totp_secret = interim_totp_secret
+        user.totp_secret = pending_totp_secret
         user.save(update_fields=["totp_secret"])
 
         login(request, user)
@@ -177,11 +164,7 @@ def verify_two_factor_code(request):
 @redirect_to_login_if_no_pending_user
 def two_factor_auth_view(request):
     pending_user_id = request.session.get("pending_user_id")
-    totp_secret = (
-        Account.objects.filter(id=pending_user_id)
-        .values_list("totp_secret", flat=True)
-        .first()
-    )
+    totp_secret = Account.objects.get(id=pending_user_id).totp_secret
     if not totp_secret:
         return redirect("two_factor_qrcode")
     return render(request, "users/two_factor_auth.html")
@@ -196,14 +179,11 @@ def totp_auth(request):
     pending_user_id = request.session.get("pending_user_id")
     user = Account.objects.get(id=pending_user_id)
 
-    totp_secret = user.totp_secret
-
-    totp = pyotp.TOTP(totp_secret)
+    totp = pyotp.TOTP(user.totp_secret)
 
     if totp.verify(totp_auth_number):
         login(request, user)
-        has_access_token = bool(user.access_token)
-        if not has_access_token:
+        if not user.access_token:
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
             )

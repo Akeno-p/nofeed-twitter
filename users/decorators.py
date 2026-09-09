@@ -1,5 +1,4 @@
 from django.shortcuts import redirect
-from functools import wraps
 
 
 def redirect_to_tweets_if_logged_in(view_func):
