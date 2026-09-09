@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django.db.models import QuerySet
 
@@ -59,8 +59,18 @@ class XUser(models.Model):
         db_table = "x_users"
 
 
+class AccountManager(UserManager):
+    def update_token(self, user_id: int, access_token: str, refresh_token: str) -> None:
+        """トークンを更新する。 戻り値はない。"""
+        self.filter(id=user_id).update(
+            access_token=access_token, refresh_token=refresh_token
+        )
+
+
 class Account(AbstractUser):
     """nofeed-twitter利用者の認証・トークン管理用"""
+
+    objects = AccountManager()
 
     id = models.BigAutoField(primary_key=True)
     x_user = models.OneToOneField(
