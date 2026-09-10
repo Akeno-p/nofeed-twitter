@@ -133,15 +133,13 @@ def verify_two_factor_code(request):
 
     if totp.verify(two_factor_code):
         pending_user_id = request.session.get("pending_user_id")
-        user = Account.objects.get(id=pending_user_id)
-        user.totp_secret = pending_totp_secret
-        user.save(update_fields=["totp_secret"])
+        account = Account.objects.get(id=pending_user_id)
+        account.totp_secret = pending_totp_secret
+        account.save(update_fields=["totp_secret"])
 
-        login(request, user)
+        login(request, account)
 
-        has_access_token = bool(user.access_token)
-
-        if not has_access_token:
+        if not account.access_token:
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
             )
@@ -169,13 +167,13 @@ def totp_auth(request):
     totp_auth_number = request.POST.get("totpAuthNumber")
 
     pending_user_id = request.session.get("pending_user_id")
-    user = Account.objects.get(id=pending_user_id)
+    account = Account.objects.get(id=pending_user_id)
 
-    totp = pyotp.TOTP(user.totp_secret)
+    totp = pyotp.TOTP(account.totp_secret)
 
     if totp.verify(totp_auth_number):
-        login(request, user)
-        if not user.access_token:
+        login(request, account)
+        if not account.access_token:
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
             )
