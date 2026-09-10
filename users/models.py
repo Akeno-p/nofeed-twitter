@@ -101,3 +101,7 @@ class Account(AbstractUser):
 
     class Meta:
         db_table = "accounts"
+
+    def is_x_linked(self) -> bool:
+        """トークンやXアカウントとのリンクなど全てが揃っていれば True 一つでもなければ False"""
+        return bool(self.access_token and self.refresh_token and self.x_user_id)

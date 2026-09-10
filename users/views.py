@@ -139,7 +139,7 @@ def verify_two_factor_code(request):
 
         login(request, account)
 
-        if not account.access_token:
+        if not account.is_x_linked():
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
             )
@@ -173,7 +173,8 @@ def totp_auth(request):
 
     if totp.verify(totp_auth_number):
         login(request, account)
-        if not account.access_token:
+
+        if not account.is_x_linked():
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
             )
@@ -184,7 +185,7 @@ def totp_auth(request):
 
 @login_required
 def twitter_auth_view(request):
-    if request.user.access_token and request.user.x_user:
+    if request.user.is_x_linked():
         return redirect("tweets")
     return render(request, "users/twitter_auth.html")
 
