@@ -79,12 +79,12 @@ class Account(AbstractUser):
     objects = AccountManager()
 
     id = models.BigAutoField(primary_key=True)
-    x_user = models.OneToOneField(
+    x_user = models.ForeignKey(
         XUser,
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
-        related_name="account",
+        related_name="accounts",
         help_text="Userテーブルの参照",
     )
     access_token = models.TextField(
