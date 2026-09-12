@@ -211,8 +211,8 @@ def twitter_auth_start(request):
 def twitter_auth_redirect(request):
     code = request.GET.get("code")
     state = request.GET.get("state")
-    session_state = request.session.get("state")
-    code_verifier = request.session.get("code_verifier")
+    session_state = request.session.pop("state", None)
+    code_verifier = request.session.pop("code_verifier", None)
 
     if state is None or state != session_state or code is None:
         return redirect("twitter_auth_error")
