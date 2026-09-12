@@ -64,13 +64,16 @@ class AccountManager(UserManager):
         self, account: Account, access_token: str, refresh_token: str
     ) -> None:
         """トークンを更新する。 戻り値はない。"""
-        self.filter(id=account.id).update(
-            access_token=access_token, refresh_token=refresh_token
-        )
+        account.access_token = access_token
+        account.refresh_token = refresh_token
+
+        account.save()
 
     def update_x_user(self, account: Account, x_user: XUser) -> None:
         """x_userを更新する。戻り値はない。"""
-        self.filter(id=account.id).update(x_user=x_user)
+        account.x_user = x_user
+
+        account.save()
 
 
 class Account(AbstractUser):

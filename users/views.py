@@ -242,10 +242,6 @@ def twitter_auth_error_view(request):
 
 def _register_x_user(request):
     """ログイン中のユーザー自身のTwitterユーザー情報を取得し、DBに登録する。"""
-
-    # 呼ぶタイミングによってuserの情報が古く、有効なaccess_tokenが存在しない場合があるため
-    request.user.refresh_from_db()
-
     status, result = request_with_token_refresh(request, get_me)
 
     if status == "error":
@@ -262,8 +258,5 @@ def _register_x_user(request):
     x_user.save()
 
     Account.objects.update_x_user(request.user, x_user)
-
-    # 一応requestのuser情報を更新しておく
-    request.user.refresh_from_db()
 
     return status
