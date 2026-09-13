@@ -157,9 +157,7 @@ def totp_setup_verify(request):
 def totp_auth_view(request):
     """2段階認証コード 入力ページを開く"""
     pending_user_id = request.session.get("pending_user_id")
-    account = Account.objects.filter(id=pending_user_id).first()
-    if account is None:
-        return redirect("login")
+    account = Account.objects.get(id=pending_user_id)
     if not account.totp_secret:
         return redirect("totp_setup")
     return render(request, "users/totp_auth.html")
