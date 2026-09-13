@@ -70,13 +70,13 @@ def do_login(request):
 
         if user.totp_secret:
             return JsonResponse(
-                {"status": "success", "redirect_url": reverse("two_factor_auth")}
+                {"status": "success", "redirect_url": reverse("totp_auth")}
             )
         else:
             return JsonResponse(
                 {
                     "status": "success",
-                    "redirect_url": reverse("two_factor_qrcode"),
+                    "redirect_url": reverse("totp_setup"),
                 }
             )
 
@@ -91,7 +91,7 @@ def do_login(request):
 
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
-def two_factor_qrcode_view(request):
+def totp_setup_view(request):
     """2段階認証用 QRコード ページを開く"""
     user_id = request.session.get("pending_user_id")
 
@@ -99,11 +99,11 @@ def two_factor_qrcode_view(request):
     totp_secret = account.totp_secret
 
     # パスワードとユーザー名が流出した場合、login.htmlでパスワードとユーザー名を入力後
-    # [users/two_factor_qrcode/]に直接アクセスすることで、秘密鍵を再設定できてしまうのを防ぐため
+    # [users/totp_setup/]に直接アクセスすることで、秘密鍵を再設定できてしまうのを防ぐため
     if totp_secret:
-        return redirect("two_factor_auth")
+        return redirect("totp_auth")
 
-    # すでにqrコード読み取り済みで[two_factor_qrcode.html]ページをリロードしてしまった場合、
+    # すでにqrコード読み取り済みで[totp_setup.html]ページをリロードしてしまった場合、
     # 秘密鍵が一致しなくなるため
     if not request.session.get("pending_totp_secret"):
         pending_totp_secret = pyotp.random_base32()
@@ -116,7 +116,7 @@ def two_factor_qrcode_view(request):
 
     return render(
         request,
-        "users/two_factor_qrcode.html",
+        "users/totp_setup.html",
         {"qrcode": qrcode_b64},
     )
 
@@ -124,18 +124,18 @@ def two_factor_qrcode_view(request):
 @require_POST
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
-def totp_setup(request):
+def totp_setup_verify(request):
     """totp_secret 初回保存処理
 
     QRコードを読み取った認証アプリの認証コードを検証し、
     正しければ Account.totp_secret に保存してログインする。
     """
-    two_factor_code = request.POST.get("twoFactorCode")
+    totp_auth_number = request.POST.get("totpAuthNumber")
     pending_totp_secret = request.session.get("pending_totp_secret")
 
     totp = pyotp.TOTP(pending_totp_secret)
 
-    if totp.verify(two_factor_code):
+    if totp.verify(totp_auth_number):
         pending_user_id = request.session.get("pending_user_id")
         account = Account.objects.get(id=pending_user_id)
         account.totp_secret = pending_totp_secret
@@ -154,21 +154,21 @@ def totp_setup(request):
 
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
-def two_factor_auth_view(request):
+def totp_auth_view(request):
     """2段階認証コード 入力ページを開く"""
     pending_user_id = request.session.get("pending_user_id")
     account = Account.objects.filter(id=pending_user_id).first()
     if account is None:
         return redirect("login")
     if not account.totp_secret:
-        return redirect("two_factor_qrcode")
-    return render(request, "users/two_factor_auth.html")
+        return redirect("totp_setup")
+    return render(request, "users/totp_auth.html")
 
 
 @require_POST
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
-def totp_auth(request):
+def totp_auth_verify(request):
     """2段階認証の処理"""
     totp_auth_number = request.POST.get("totpAuthNumber")
 

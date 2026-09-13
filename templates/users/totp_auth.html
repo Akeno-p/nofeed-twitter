@@ -57,7 +57,7 @@
     $("#totp-auth-button").on("click", () => {
       const totpAuthNumber = $("#totp-auth-number").val();
       $.ajax({
-        url: "{% url 'totp_auth' %}",
+        url: "{% url 'totp_auth_verify' %}",
         method: "POST",
         data: { totpAuthNumber: totpAuthNumber },
       }).done((response) => {
