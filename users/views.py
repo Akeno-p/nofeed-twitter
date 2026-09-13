@@ -149,7 +149,9 @@ def totp_setup_verify(request):
             )
         return JsonResponse({"status": "success", "redirect_url": reverse("tweets")})
     else:
-        return JsonResponse({"status": "fail", "message": "認証コードが一致しません。"})
+        return JsonResponse(
+            {"status": "fail", "message": "認証キーが正しくありません。"}
+        )
 
 
 @redirect_to_tweets_if_logged_in
