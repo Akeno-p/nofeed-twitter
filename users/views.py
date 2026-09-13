@@ -169,7 +169,11 @@ def totp_auth_view(request):
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
 def totp_auth_verify(request):
-    """2段階認証の処理"""
+    """2段階認証の処理
+
+    入力された totp_auth_number と accountに保存された totp_secret が
+    一致するならログインする。
+    """
     totp_auth_number = request.POST.get("totpAuthNumber")
 
     pending_user_id = request.session.get("pending_user_id")
