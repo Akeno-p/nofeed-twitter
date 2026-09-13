@@ -40,3 +40,33 @@ TWITTER_GET_TWEET_ENDPOINT = "https://api.x.com/2/tweets/{tweet_id}"
 TWITTER_USER_TWEETS_ENDPOINT = "https://api.x.com/2/users/{user_id}/tweets"
 # GET：ツイートを検索して取得(直近7日分のみ)
 TWITTER_SEARCH_RECENT_ENDPOINT = "https://api.x.com/2/tweets/search/recent"
+
+# ===== その他 =====
+
+# 取得したトークンに持たせたい権限
+TWITTER_AUTH_ALL_SCOPE = " ".join(  # noqa: FLY002
+    [
+        "tweet.read",
+        "tweet.write",
+        "tweet.moderate.write",
+        "users.read",
+        "users.email",
+        "follows.read",
+        "follows.write",
+        "offline.access",
+        "space.read",
+        "mute.read",
+        "mute.write",
+        "like.read",
+        "like.write",
+        "list.read",
+        "list.write",
+        "block.read",
+        "block.write",
+        "bookmark.read",
+        "bookmark.write",
+        "dm.read",
+        "dm.write",
+        "media.write",
+    ]
+)

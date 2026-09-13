@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.http import HttpRequest
 
 from common.x_api import (
+    TWITTER_AUTH_ALL_SCOPE,
     TWITTER_AUTH_ENDPOINT,
     TWITTER_CLIENT_ID,
     TWITTER_CLIENT_SECRET,
@@ -96,31 +97,6 @@ def build_auth_url(state: str, code_challenge: str) -> str:
     state: リダイレクトURLにくっついて返ってくる。呼び出し側のセッションの値と突合して自分のアプリが始めた認証か判別する。
     code_challenge: PKCE 用のハッシュ値。X側が保持して、トークン交換時 code_verifier(ハッシュ前の値)を送り突合する。
     """
-    # 現状このアプリを使用するのは自分だけの想定なので、とりあえず全部の権限をとりあえず列挙している。
-    # 不要だった権限は消していいかもしれない。
-    TWITTER_AUTH_ALL_SCOPE = (
-        "tweet.read "
-        "tweet.write "
-        "tweet.moderate.write "
-        "users.read "
-        "users.email "
-        "follows.read "
-        "follows.write "
-        "offline.access "
-        "space.read "
-        "mute.read "
-        "mute.write "
-        "like.read "
-        "like.write "
-        "list.read "
-        "list.write "
-        "block.read "
-        "block.write "
-        "bookmark.read "
-        "bookmark.write "
-        "dm.read dm.write "
-        "media.write"
-    )
 
     params = {
         "response_type": "code",
