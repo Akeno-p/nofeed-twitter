@@ -1,6 +1,5 @@
 """
-X APIへ実際にリクエストを送る関数をまとめたモジュール。
-定数やエンドポイントURLは common/x_api.py に置く。
+X APIへ実際にリクエストを送る関数やそれに関係する関数をまとめたモジュール。
 """
 
 from typing import TypedDict

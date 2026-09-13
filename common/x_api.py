@@ -1,6 +1,5 @@
 """
 X APIを使用するための定数やエンドポイントURLをまとめたモジュール。
-関数は common/utils.py に置く。
 """
 
 import os
