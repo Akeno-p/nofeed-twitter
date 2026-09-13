@@ -74,7 +74,7 @@
     $("#two-factor-button").on("click", () => {
       const twoFactorCode = $("#two-factor-code").val();
       $.ajax({
-        url: "{% url 'verify_two_factor_code' %}",
+        url: "{% url 'totp_setup' %}",
         method: "POST",
         data: { twoFactorCode: twoFactorCode },
       }).done((response) => {

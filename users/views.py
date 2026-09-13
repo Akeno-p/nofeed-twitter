@@ -22,12 +22,14 @@ from .x_oauth import make_code_challenge
 
 @redirect_to_tweets_if_logged_in
 def login_view(request):
+    """ログインページを開く"""
     return render(request, "users/login.html")
 
 
 @require_POST
 @redirect_to_tweets_if_logged_in
 def do_login(request):
+    """ログイン処理を実行する"""
     username = request.POST.get("username")
     password = request.POST.get("password")
 
@@ -90,6 +92,7 @@ def do_login(request):
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
 def two_factor_qrcode_view(request):
+    """2段階認証用 QRコード ページを開く"""
     user_id = request.session.get("pending_user_id")
 
     account = Account.objects.get(id=user_id)
@@ -121,10 +124,11 @@ def two_factor_qrcode_view(request):
 @require_POST
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
-def verify_two_factor_code(request):
-    """入力された認証キーが正しいか確認
+def totp_setup(request):
+    """totp_secret 初回保存処理
 
-    正しい場合はAccount.totp_secretに保存する。
+    QRコードを読み取った認証アプリの認証コードを検証し、
+    正しければ Account.totp_secret に保存してログインする。
     """
     two_factor_code = request.POST.get("twoFactorCode")
     pending_totp_secret = request.session.get("pending_totp_secret")
@@ -151,6 +155,7 @@ def verify_two_factor_code(request):
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
 def two_factor_auth_view(request):
+    """2段階認証コード 入力ページを開く"""
     pending_user_id = request.session.get("pending_user_id")
     account = Account.objects.filter(id=pending_user_id).first()
     if account is None:
@@ -164,6 +169,7 @@ def two_factor_auth_view(request):
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
 def totp_auth(request):
+    """2段階認証の処理"""
     totp_auth_number = request.POST.get("totpAuthNumber")
 
     pending_user_id = request.session.get("pending_user_id")
@@ -185,6 +191,7 @@ def totp_auth(request):
 
 @login_required
 def twitter_auth_view(request):
+    """Twitter認証ページを開く"""
     if request.user.is_x_linked():
         return redirect("tweets")
     return render(request, "users/twitter_auth.html")
@@ -193,6 +200,7 @@ def twitter_auth_view(request):
 @login_required
 @require_POST
 def twitter_auth_start(request):
+    """Twitter認証ページへのURLを生成して返す"""
     # 文字数はcode_verifierが43~128指定 stateは指定なし
     # token_urlsafeの引数は文字数ではなくバイト数なので(16)は16文字という意味ではない。
     state = secrets.token_urlsafe(16)
@@ -208,7 +216,8 @@ def twitter_auth_start(request):
 
 
 @login_required
-def twitter_auth_redirect(request):
+def twitter_auth_callback(request):
+    """Twitter認証後のコールバック処理"""
     code = request.GET.get("code")
     state = request.GET.get("state")
     session_state = request.session.pop("state", None)
@@ -237,6 +246,7 @@ def twitter_auth_redirect(request):
 
 
 def twitter_auth_error_view(request):
+    """Twitter認証失敗ページを開く"""
     return render(request, "users/twitter_auth_error.html")
 
 
