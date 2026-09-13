@@ -149,7 +149,9 @@ def totp_setup_verify(request):
             )
         return JsonResponse({"status": "success", "redirect_url": reverse("tweets")})
     else:
-        return JsonResponse({"status": "fail", "message": "認証コードが一致しません。"})
+        return JsonResponse(
+            {"status": "fail", "message": "認証キーが正しくありません。"}
+        )
 
 
 @redirect_to_tweets_if_logged_in
@@ -157,9 +159,7 @@ def totp_setup_verify(request):
 def totp_auth_view(request):
     """2段階認証コード 入力ページを開く"""
     pending_user_id = request.session.get("pending_user_id")
-    account = Account.objects.filter(id=pending_user_id).first()
-    if account is None:
-        return redirect("login")
+    account = Account.objects.get(id=pending_user_id)
     if not account.totp_secret:
         return redirect("totp_setup")
     return render(request, "users/totp_auth.html")
@@ -169,7 +169,11 @@ def totp_auth_view(request):
 @redirect_to_tweets_if_logged_in
 @redirect_to_login_if_no_pending_user
 def totp_auth_verify(request):
-    """2段階認証の処理"""
+    """2段階認証の処理
+
+    入力された totp_auth_number と accountに保存された totp_secret が
+    一致するならログインする。
+    """
     totp_auth_number = request.POST.get("totpAuthNumber")
 
     pending_user_id = request.session.get("pending_user_id")
