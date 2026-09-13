@@ -1,10 +1,6 @@
-import base64
-import hashlib
 import secrets
-from urllib.parse import urlencode
 
 import pyotp
-import requests
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -12,15 +8,8 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from common.utils import update_tokens
-from common.x_api import (
-    TWITTER_AUTH_ENDPOINT,
-    TWITTER_CLIENT_ID,
-    TWITTER_CLIENT_SECRET,
-    TWITTER_REDIRECT_URI,
-    TWITTER_TOKEN_ENDPOINT,
-    TWITTER_USERS_ME_ENDPOINT,
-)
+from common.utils import request_with_token_refresh
+from common.x_api_client import build_auth_url, get_me, post_token_request
 
 from .decorators import (
     redirect_to_login_if_no_pending_user,
@@ -28,6 +17,7 @@ from .decorators import (
 )
 from .models import Account, XUser
 from .totp import make_qrcode_b64
+from .x_oauth import make_code_challenge
 
 
 @redirect_to_tweets_if_logged_in
@@ -143,15 +133,13 @@ def verify_two_factor_code(request):
 
     if totp.verify(two_factor_code):
         pending_user_id = request.session.get("pending_user_id")
-        user = Account.objects.get(id=pending_user_id)
-        user.totp_secret = pending_totp_secret
-        user.save(update_fields=["totp_secret"])
+        account = Account.objects.get(id=pending_user_id)
+        account.totp_secret = pending_totp_secret
+        account.save(update_fields=["totp_secret"])
 
-        login(request, user)
+        login(request, account)
 
-        has_access_token = bool(user.access_token)
-
-        if not has_access_token:
+        if not account.is_x_linked():
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
             )
@@ -179,13 +167,14 @@ def totp_auth(request):
     totp_auth_number = request.POST.get("totpAuthNumber")
 
     pending_user_id = request.session.get("pending_user_id")
-    user = Account.objects.get(id=pending_user_id)
+    account = Account.objects.get(id=pending_user_id)
 
-    totp = pyotp.TOTP(user.totp_secret)
+    totp = pyotp.TOTP(account.totp_secret)
 
     if totp.verify(totp_auth_number):
-        login(request, user)
-        if not user.access_token:
+        login(request, account)
+
+        if not account.is_x_linked():
             return JsonResponse(
                 {"status": "success", "redirect_url": reverse("twitter_auth")}
             )
@@ -196,9 +185,7 @@ def totp_auth(request):
 
 @login_required
 def twitter_auth_view(request):
-    has_access_token = bool(request.user.access_token)
-    has_relation_x_user = bool(request.user.x_user)
-    if has_access_token and has_relation_x_user:
+    if request.user.is_x_linked():
         return redirect("tweets")
     return render(request, "users/twitter_auth.html")
 
@@ -210,111 +197,40 @@ def twitter_auth_start(request):
     # token_urlsafeの引数は文字数ではなくバイト数なので(16)は16文字という意味ではない。
     state = secrets.token_urlsafe(16)
     code_verifier = secrets.token_urlsafe(64)
+    code_challenge = make_code_challenge(code_verifier)
 
-    code_challenge = _sha256_base64url(code_verifier)
+    twitter_auth_url = build_auth_url(state, code_challenge)
 
     request.session["state"] = state
     request.session["code_verifier"] = code_verifier
 
-    # 現状このアプリを使用するのは自分だけの想定なので、とりあえず全部の権限をとりあえず列挙している。
-    # アプリが完成したら不要だった権限は消していいかもしれない。
-    TWITTER_AUTH_ALL_SCOPE = (
-        "tweet.read "
-        "tweet.write "
-        "tweet.moderate.write "
-        "users.read "
-        "users.email "
-        "follows.read "
-        "follows.write "
-        "offline.access "
-        "space.read "
-        "mute.read "
-        "mute.write "
-        "like.read "
-        "like.write "
-        "list.read "
-        "list.write "
-        "block.read "
-        "block.write "
-        "bookmark.read "
-        "bookmark.write "
-        "dm.read dm.write "
-        "media.write"
-    )
-
-    params = {
-        "response_type": "code",
-        "client_id": TWITTER_CLIENT_ID,
-        "redirect_uri": TWITTER_REDIRECT_URI,
-        "scope": TWITTER_AUTH_ALL_SCOPE,
-        "state": state,
-        "code_challenge": code_challenge,
-        "code_challenge_method": "S256",
-    }
-
-    encoded_params = urlencode(params)
-
-    twitter_auth_url = TWITTER_AUTH_ENDPOINT + "?" + encoded_params
-
     return JsonResponse({"redirect_url": twitter_auth_url})
-
-
-def _sha256_base64url(code_verifier):
-    """sha256のハッシュ値をbase64url形式に直した値を返す。"""
-
-    code_challenge = code_verifier.encode()
-    code_challenge = hashlib.sha256(code_challenge).digest()
-    code_challenge = base64.urlsafe_b64encode(code_challenge)
-    code_challenge = code_challenge.decode()
-    code_challenge = code_challenge.rstrip("=")
-
-    return code_challenge
 
 
 @login_required
 def twitter_auth_redirect(request):
     code = request.GET.get("code")
     state = request.GET.get("state")
+    session_state = request.session.pop("state", None)
+    code_verifier = request.session.pop("code_verifier", None)
 
-    session_state = request.session.get("state")
-
-    if state is None or state != session_state:
+    if state is None or state != session_state or code is None:
         return redirect("twitter_auth_error")
 
-    twitter_token_endpoint_data = {
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": TWITTER_REDIRECT_URI,
-        "client_id": TWITTER_CLIENT_ID,
-        "code_verifier": request.session.get("code_verifier"),
-    }
+    response = post_token_request(code, code_verifier)
 
-    token_response = requests.post(
-        TWITTER_TOKEN_ENDPOINT,
-        data=twitter_token_endpoint_data,
-        auth=(
-            TWITTER_CLIENT_ID,
-            TWITTER_CLIENT_SECRET,
-        ),
-    )
-
-    if token_response.status_code != 200:
+    if response.status_code != 200:
         return redirect("twitter_auth_error")
 
-    token_data = token_response.json()
+    token_data = response.json()
 
-    access_token = token_data.get("access_token")
-    refresh_token = token_data.get("refresh_token")
-
-    user_id = request.user.id
-
-    Account.objects.filter(id=user_id).update(
-        access_token=access_token, refresh_token=refresh_token
+    Account.objects.update_token(
+        request.user, token_data["access_token"], token_data["refresh_token"]
     )
 
     if not request.user.x_user:
-        is_register = _register_user_me(request)
-        if not is_register:
+        status = _register_x_user(request)
+        if status == "error":
             return redirect("twitter_auth_error")
 
     return redirect("tweets")
@@ -324,48 +240,23 @@ def twitter_auth_error_view(request):
     return render(request, "users/twitter_auth_error.html")
 
 
-def _register_user_me(request):
+def _register_x_user(request):
     """ログイン中のユーザー自身のTwitterユーザー情報を取得し、DBに登録する。"""
+    status, result = request_with_token_refresh(request, get_me)
 
-    # 呼ぶタイミングによってuserの情報が古く、有効なaccess_tokenが存在しない場合があるため
-    request.user.refresh_from_db()
+    if status == "error":
+        return status
 
-    user_info_response = requests.get(
-        TWITTER_USERS_ME_ENDPOINT,
-        headers={"Authorization": f"Bearer {request.user.access_token}"},
-        params={"user.fields": "profile_image_url"},
-    )
-
-    if user_info_response.status_code == 401:
-        is_update_tokens = update_tokens(request)
-
-        if not is_update_tokens:
-            return False
-
-        user_info_response = requests.get(
-            TWITTER_USERS_ME_ENDPOINT,
-            headers={"Authorization": f"Bearer {request.user.access_token}"},
-            params={"user.fields": "profile_image_url"},
-        )
-
-    if user_info_response.status_code != 200:
-        return False
-
-    user_info_dict = user_info_response.json()
-    user_data = user_info_dict.get("data")
-    twitter_id = user_data.get("id")
-    name = user_data.get("name")
-    username = user_data.get("username")
-    profile_image_url = user_data.get("profile_image_url")
-
+    data = result.json()["data"]
     x_user = XUser(
-        id=twitter_id, username=username, name=name, profile_image_url=profile_image_url
+        id=data.get("id"),
+        username=data.get("username"),
+        name=data.get("name"),
+        profile_image_url=data.get("profile_image_url"),
     )
+
     x_user.save()
 
-    Account.objects.filter(id=request.user.id).update(x_user=x_user)
+    Account.objects.update_x_user(request.user, x_user)
 
-    # 一応requestのuser情報を更新しておく
-    request.user.refresh_from_db()
-
-    return True
+    return status

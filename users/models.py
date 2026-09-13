@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django.db.models import QuerySet
 
@@ -59,16 +59,35 @@ class XUser(models.Model):
         db_table = "x_users"
 
 
+class AccountManager(UserManager):
+    def update_token(
+        self, account: Account, access_token: str, refresh_token: str
+    ) -> None:
+        """トークンを更新する。 戻り値はない。"""
+        account.access_token = access_token
+        account.refresh_token = refresh_token
+
+        account.save()
+
+    def update_x_user(self, account: Account, x_user: XUser) -> None:
+        """x_userを更新する。戻り値はない。"""
+        account.x_user = x_user
+
+        account.save()
+
+
 class Account(AbstractUser):
     """nofeed-twitter利用者の認証・トークン管理用"""
 
+    objects = AccountManager()
+
     id = models.BigAutoField(primary_key=True)
-    x_user = models.OneToOneField(
+    x_user = models.ForeignKey(
         XUser,
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
-        related_name="account",
+        related_name="accounts",
         help_text="Userテーブルの参照",
     )
     access_token = models.TextField(
@@ -85,3 +104,7 @@ class Account(AbstractUser):
 
     class Meta:
         db_table = "accounts"
+
+    def is_x_linked(self) -> bool:
+        """トークンやXアカウントとのリンクなど全てが揃っていれば True 一つでもなければ False"""
+        return bool(self.access_token and self.refresh_token and self.x_user_id)
