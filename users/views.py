@@ -249,7 +249,7 @@ def twitter_auth_callback(request):
 
     token_data = response.json()
 
-    Account.objects.update_token(
+    Account.objects.update_tokens(
         request.user, token_data["access_token"], token_data["refresh_token"]
     )
 

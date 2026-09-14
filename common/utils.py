@@ -6,11 +6,7 @@ import logging
 
 import requests
 
-from common.x_api import (
-    TWITTER_CLIENT_ID,
-    TWITTER_CLIENT_SECRET,
-    TWITTER_TOKEN_ENDPOINT,
-)
+from common.x_api_client import post_update_tokens
 from users.models import Account
 
 logger = logging.getLogger(__name__)
@@ -21,33 +17,16 @@ def update_tokens(request):
 
     成功した場合は True 失敗した場合は Flase  を返す。
     """
-    twitter_tokens_endpoint_data = {
-        "grant_type": "refresh_token",
-        "refresh_token": request.user.refresh_token,
-        "client_id": TWITTER_CLIENT_ID,
-    }
-
-    response = requests.post(
-        TWITTER_TOKEN_ENDPOINT,
-        data=twitter_tokens_endpoint_data,
-        auth=(
-            TWITTER_CLIENT_ID,
-            TWITTER_CLIENT_SECRET,
-        ),
-    )
+    response = post_update_tokens(request)
 
     if response.status_code != 200:
         return False
 
     token_data = response.json()
-    new_access_token = token_data.get("access_token")
-    new_refresh_token = token_data.get("refresh_token")
 
-    Account.objects.filter(id=request.user.id).update(
-        access_token=new_access_token, refresh_token=new_refresh_token
+    Account.objects.update_tokens(
+        request.user, token_data["access_token"], token_data["refresh_token"]
     )
-
-    request.user.refresh_from_db()
 
     return True
 

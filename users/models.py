@@ -73,7 +73,7 @@ class XUser(models.Model):
 
 
 class AccountManager(UserManager):
-    def update_token(
+    def update_tokens(
         self, account: Account, access_token: str, refresh_token: str
     ) -> None:
         """トークンを更新する。 戻り値はない。"""

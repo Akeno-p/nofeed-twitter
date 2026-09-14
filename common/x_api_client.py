@@ -148,6 +148,35 @@ def post_token_request(code: str, code_verifier: str) -> requests.Response:
     return response
 
 
+def post_update_tokens(request: HttpRequest) -> requests.Response:
+    """リフレッシュトークンを使ってアクセストークンを再発行するリクエスト
+
+    response.json() の結果は下記の形。
+    {
+        "token_type": "bearer",
+        "expires_in": アクセストークンの有効秒数,
+        "access_token": "新しいアクセストークン",
+        "refresh_token": "新しいリフレッシュトークン",
+        "scope": "許可されたスコープ"
+    }
+    """
+    response = requests.post(
+        TWITTER_TOKEN_ENDPOINT,
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": request.user.refresh_token,
+            "client_id": TWITTER_CLIENT_ID,
+        },
+        auth=(
+            TWITTER_CLIENT_ID,
+            TWITTER_CLIENT_SECRET,
+        ),
+        timeout=TWITTER_API_TIMEOUT,
+    )
+
+    return response
+
+
 def get_me(request: HttpRequest) -> requests.Response:
     """自分のユーザー情報を取得するリクエスト
 
