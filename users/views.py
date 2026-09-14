@@ -262,14 +262,7 @@ def _register_x_user(request):
         return status
 
     data = result.json()["data"]
-    x_user = XUser(
-        id=data.get("id"),
-        username=data.get("username"),
-        name=data.get("name"),
-        profile_image_url=data.get("profile_image_url"),
-    )
-
-    x_user.save()
+    x_user = XUser.objects.create_from_response(data)
 
     Account.objects.update_x_user(request.user, x_user)
 
