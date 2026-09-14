@@ -10,6 +10,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.http import HttpRequest
 
 from common.x_api import (
+    TWITTER_API_TIMEOUT,
     TWITTER_AUTH_ALL_SCOPE,
     TWITTER_AUTH_ENDPOINT,
     TWITTER_CLIENT_ID,
@@ -142,6 +143,7 @@ def post_token_request(code: str, code_verifier: str) -> requests.Response:
             TWITTER_CLIENT_ID,
             TWITTER_CLIENT_SECRET,
         ),
+        timeout=TWITTER_API_TIMEOUT,
     )
     return response
 
@@ -163,6 +165,7 @@ def get_me(request: HttpRequest) -> requests.Response:
         TWITTER_USERS_ME_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params={"user.fields": "profile_image_url"},
+        timeout=TWITTER_API_TIMEOUT,
     )
 
     return response
@@ -185,6 +188,7 @@ def post_media_request(request: HttpRequest, image: UploadedFile) -> requests.Re
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         files={"media": image},
         data={"media_category": "tweet_image"},
+        timeout=TWITTER_API_TIMEOUT,
     )
     return response
 
@@ -212,6 +216,7 @@ def post_tweet_request(request: HttpRequest, payload: dict) -> requests.Response
         TWITTER_TWEET_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         json=payload,
+        timeout=TWITTER_API_TIMEOUT,
     )
     return response
 
@@ -260,6 +265,7 @@ def get_tweet(request: HttpRequest, tweet_id: str | int) -> requests.Response:
             "expansions": "attachments.media_keys",
             "media.fields": "url,type,alt_text,width,height,duration_ms",
         },
+        timeout=TWITTER_API_TIMEOUT,
     )
 
     return response
@@ -292,6 +298,7 @@ def get_all_tweets(
         TWITTER_USER_TWEETS_ENDPOINT.format(user_id=request.user.x_user_id),
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params=params,
+        timeout=TWITTER_API_TIMEOUT,
     )
 
     return response
@@ -323,6 +330,7 @@ def get_users(request: HttpRequest, user_ids: list[int]) -> requests.Response:
             "ids": ",".join(str(user_id) for user_id in user_ids),
             "user.fields": "profile_image_url",
         },
+        timeout=TWITTER_API_TIMEOUT,
     )
     return response
 
@@ -364,6 +372,7 @@ def get_replies(
         TWITTER_SEARCH_RECENT_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params=params,
+        timeout=TWITTER_API_TIMEOUT,
     )
 
     return response

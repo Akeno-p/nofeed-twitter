@@ -42,6 +42,9 @@ TWITTER_SEARCH_RECENT_ENDPOINT = "https://api.x.com/2/tweets/search/recent"
 
 # ===== その他 =====
 
+# リクエストのtimeout時間
+TWITTER_API_TIMEOUT = (3.0, 10.0)
+
 # 取得したトークンに持たせたい権限
 TWITTER_AUTH_ALL_SCOPE = " ".join(  # noqa: FLY002
     [

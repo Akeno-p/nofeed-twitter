@@ -66,7 +66,15 @@ def request_with_token_refresh(request, send_request, *args):
     成功時は ("success", response)、
     失敗時は ("error", エラー内容の辞書) を返す。
     """
-    response = send_request(request, *args)
+    try:
+        response = send_request(request, *args)
+    except requests.exceptions.RequestException as e:
+        logger.exception("APIリクエスト失敗: %s %s", e.request.method, e.request.url)
+        return "error", {
+            "status": "error",
+            "message": "接続に失敗しました。",
+            "error_code": response.status_code,
+        }
 
     if response.status_code == 401:
         if not update_tokens(request):
@@ -76,7 +84,17 @@ def request_with_token_refresh(request, send_request, *args):
                 "error_code": response.status_code,
             }
 
-        response = send_request(request, *args)
+        try:
+            response = send_request(request, *args)
+        except requests.exceptions.RequestException as e:
+            logger.exception(
+                "APIリクエスト失敗: %s %s", e.request.method, e.request.url
+            )
+            return "error", {
+                "status": "error",
+                "message": "接続に失敗しました。",
+                "error_code": response.status_code,
+            }
 
     if not (200 <= response.status_code < 300):
         logger.error(
