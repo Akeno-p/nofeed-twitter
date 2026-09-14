@@ -21,15 +21,13 @@ def update_tokens(request):
 
     成功した場合は True 失敗した場合は Flase  を返す。
     """
-    refresh_token = request.user.refresh_token
-
     twitter_tokens_endpoint_data = {
         "grant_type": "refresh_token",
-        "refresh_token": refresh_token,
+        "refresh_token": request.user.refresh_token,
         "client_id": TWITTER_CLIENT_ID,
     }
 
-    new_tokens_response = requests.post(
+    response = requests.post(
         TWITTER_TOKEN_ENDPOINT,
         data=twitter_tokens_endpoint_data,
         auth=(
@@ -38,12 +36,12 @@ def update_tokens(request):
         ),
     )
 
-    if new_tokens_response.status_code != 200:
+    if response.status_code != 200:
         return False
 
-    new_tokens_dict = new_tokens_response.json()
-    new_access_token = new_tokens_dict.get("access_token")
-    new_refresh_token = new_tokens_dict.get("refresh_token")
+    token_data = response.json()
+    new_access_token = token_data.get("access_token")
+    new_refresh_token = token_data.get("refresh_token")
 
     Account.objects.filter(id=request.user.id).update(
         access_token=new_access_token, refresh_token=new_refresh_token
