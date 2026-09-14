@@ -21,9 +21,6 @@ def update_tokens(request):
 
     成功した場合は True 失敗した場合は Flase  を返す。
     """
-
-    # 呼ぶタイミングによってuserの情報が古く、有効なrefresh_tokenが存在しない場合があるため
-    request.user.refresh_from_db()
     refresh_token = request.user.refresh_token
 
     twitter_tokens_endpoint_data = {
