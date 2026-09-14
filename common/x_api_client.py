@@ -200,23 +200,32 @@ def get_me(request: HttpRequest) -> requests.Response:
     return response
 
 
-def post_media_request(request: HttpRequest, image: UploadedFile) -> requests.Response:
-    """画像をアップロードするリクエスト
+def get_users(request: HttpRequest, user_ids: list[int]) -> requests.Response:
+    """ユーザー情報を複数取得するリクエスト
+
+    user_ids: 取得したいユーザーのIDのリスト。1回で最大100件まで。
 
     response.json() の結果は下記の形。
     {
-        "data": {
-            "id": "アップロードされたメディアのID",
-            "media_key": "メディアのキー",
-        }
+        "data": [
+            {
+                "id": "ユーザーID",
+                "name": "表示名",
+                "username": "ユーザー名(@の後ろ)",
+                "profile_image_url": "アイコン画像のURL"
+            }
+        ]
     }
+    ※ 削除・凍結されたユーザーのIDが含まれていた場合、そのユーザーは dataに入らず、
+      代わりに "errors" キーに理由が入る。
     """
-    image.seek(0)
-    response = requests.post(
-        TWITTER_MEDIA_ENDPOINT,
+    response = requests.get(
+        TWITTER_USERS_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
-        files={"media": image},
-        data={"media_category": "tweet_image"},
+        params={
+            "ids": ",".join(str(user_id) for user_id in user_ids),
+            "user.fields": "profile_image_url",
+        },
         timeout=TWITTER_API_TIMEOUT,
     )
     return response
@@ -333,37 +342,6 @@ def get_all_tweets(
     return response
 
 
-def get_users(request: HttpRequest, user_ids: list[int]) -> requests.Response:
-    """ユーザー情報を複数取得するリクエスト
-
-    user_ids: 取得したいユーザーのIDのリスト。1回で最大100件まで。
-
-    response.json() の結果は下記の形。
-    {
-        "data": [
-            {
-                "id": "ユーザーID",
-                "name": "表示名",
-                "username": "ユーザー名(@の後ろ)",
-                "profile_image_url": "アイコン画像のURL"
-            }
-        ]
-    }
-    ※ 削除・凍結されたユーザーのIDが含まれていた場合、そのユーザーは dataに入らず、
-      代わりに "errors" キーに理由が入る。
-    """
-    response = requests.get(
-        TWITTER_USERS_ENDPOINT,
-        headers={"Authorization": f"Bearer {request.user.access_token}"},
-        params={
-            "ids": ",".join(str(user_id) for user_id in user_ids),
-            "user.fields": "profile_image_url",
-        },
-        timeout=TWITTER_API_TIMEOUT,
-    )
-    return response
-
-
 def get_replies(
     request: HttpRequest, next_token: str | None = None, since_id: int | None = None
 ) -> requests.Response:
@@ -404,4 +382,26 @@ def get_replies(
         timeout=TWITTER_API_TIMEOUT,
     )
 
+    return response
+
+
+def post_media_request(request: HttpRequest, image: UploadedFile) -> requests.Response:
+    """画像をアップロードするリクエスト
+
+    response.json() の結果は下記の形。
+    {
+        "data": {
+            "id": "アップロードされたメディアのID",
+            "media_key": "メディアのキー",
+        }
+    }
+    """
+    image.seek(0)
+    response = requests.post(
+        TWITTER_MEDIA_ENDPOINT,
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        files={"media": image},
+        data={"media_category": "tweet_image"},
+        timeout=TWITTER_API_TIMEOUT,
+    )
     return response
