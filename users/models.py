@@ -29,7 +29,7 @@ class XUserManager(models.Manager):
     def bulk_create_from_responses(
         self, x_user_responses: list[XUserResponseData]
     ) -> None:
-        """ユーザー情報を複数保存する"""
+        """Xユーザー情報を複数保存する"""
         x_users = []
         for response in x_user_responses:
             x_user = XUser(
@@ -41,6 +41,19 @@ class XUserManager(models.Manager):
             x_users.append(x_user)
 
         self.bulk_create(x_users)
+
+    def create_from_response(self, data: XUserResponseData) -> XUser:
+        """Xユーザー情報を1件保存する"""
+        x_user = XUser(
+            id=data.get("id"),
+            username=data.get("username"),
+            name=data.get("name"),
+            profile_image_url=data.get("profile_image_url"),
+        )
+
+        x_user.save()
+
+        return x_user
 
 
 class XUser(models.Model):
