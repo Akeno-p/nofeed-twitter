@@ -290,6 +290,10 @@
           alert(
             "エラーコード" + response.error_code + "： " + response.message,
           );
+        } else if (response.status === "exception") {
+          alert(response.message);
+        } else {
+          alert("想定外のエラーが発生しました。");
         }
       });
     });

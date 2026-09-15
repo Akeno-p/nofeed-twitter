@@ -45,9 +45,8 @@ def request_with_token_refresh(request, send_request, *args):
     except requests.exceptions.RequestException as e:
         logger.exception("APIリクエスト失敗: %s %s", e.request.method, e.request.url)
         return "error", {
-            "status": "error",
+            "status": "exception",
             "message": "接続に失敗しました。",
-            "error_code": response.status_code,
         }
 
     if response.status_code == 401:
@@ -65,9 +64,8 @@ def request_with_token_refresh(request, send_request, *args):
                 "APIリクエスト失敗: %s %s", e.request.method, e.request.url
             )
             return "error", {
-                "status": "error",
+                "status": "exception",
                 "message": "接続に失敗しました。",
-                "error_code": response.status_code,
             }
 
     if not (200 <= response.status_code < 300):

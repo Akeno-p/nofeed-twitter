@@ -253,6 +253,8 @@
           alert(
             "エラーコード" + response.error_code + "： " + response.message,
           );
+        } else if (response.status === "exception") {
+          alert(response.message);
         } else {
           alert("想定外のエラーが発生しました。");
         }
@@ -285,6 +287,8 @@
           alert(
             "エラーコード" + response.error_code + "： " + response.message,
           );
+        } else if (response.status === "exception") {
+          alert(response.message);
         } else {
           alert("想定外のエラーが発生しました。");
         }
@@ -292,7 +296,7 @@
     });
 
     // 画像拡大表示
-    $("[data-tweet-media] img").on("click", function() {
+    $("[data-tweet-media] img").on("click", function () {
       const imageUrl = $(this).attr("src");
       $("#img-modal img").attr("src", imageUrl);
       $("#img-modal")[0].showModal();

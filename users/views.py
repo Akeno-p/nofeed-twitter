@@ -238,11 +238,7 @@ def twitter_auth_callback(request):
         response = post_token_request(code, code_verifier)
     except requests.exceptions.RequestException as e:
         logger.exception("APIリクエスト失敗: %s %s", e.request.method, e.request.url)
-        return "error", {
-            "status": "error",
-            "message": "接続に失敗しました。",
-            "error_code": response.status_code,
-        }
+        return redirect("twitter_auth_error")
 
     if response.status_code != 200:
         return redirect("twitter_auth_error")
