@@ -1,6 +1,5 @@
 """
-X APIへ実際にリクエストを送る関数をまとめたモジュール。
-定数やエンドポイントURLは common/x_api.py に置く。
+X APIへ実際にリクエストを送る関数やそれに関係する関数をまとめたモジュール。
 """
 
 from typing import TypedDict
@@ -11,6 +10,8 @@ from django.core.files.uploadedfile import UploadedFile
 from django.http import HttpRequest
 
 from common.x_api import (
+    TWITTER_API_TIMEOUT,
+    TWITTER_AUTH_ALL_SCOPE,
     TWITTER_AUTH_ENDPOINT,
     TWITTER_CLIENT_ID,
     TWITTER_CLIENT_SECRET,
@@ -96,31 +97,6 @@ def build_auth_url(state: str, code_challenge: str) -> str:
     state: リダイレクトURLにくっついて返ってくる。呼び出し側のセッションの値と突合して自分のアプリが始めた認証か判別する。
     code_challenge: PKCE 用のハッシュ値。X側が保持して、トークン交換時 code_verifier(ハッシュ前の値)を送り突合する。
     """
-    # 現状このアプリを使用するのは自分だけの想定なので、とりあえず全部の権限をとりあえず列挙している。
-    # 不要だった権限は消していいかもしれない。
-    TWITTER_AUTH_ALL_SCOPE = (
-        "tweet.read "
-        "tweet.write "
-        "tweet.moderate.write "
-        "users.read "
-        "users.email "
-        "follows.read "
-        "follows.write "
-        "offline.access "
-        "space.read "
-        "mute.read "
-        "mute.write "
-        "like.read "
-        "like.write "
-        "list.read "
-        "list.write "
-        "block.read "
-        "block.write "
-        "bookmark.read "
-        "bookmark.write "
-        "dm.read dm.write "
-        "media.write"
-    )
 
     params = {
         "response_type": "code",
@@ -167,7 +143,37 @@ def post_token_request(code: str, code_verifier: str) -> requests.Response:
             TWITTER_CLIENT_ID,
             TWITTER_CLIENT_SECRET,
         ),
+        timeout=TWITTER_API_TIMEOUT,
     )
+    return response
+
+
+def post_update_tokens(request: HttpRequest) -> requests.Response:
+    """リフレッシュトークンを使ってアクセストークンを再発行するリクエスト
+
+    response.json() の結果は下記の形。
+    {
+        "token_type": "bearer",
+        "expires_in": アクセストークンの有効秒数,
+        "access_token": "新しいアクセストークン",
+        "refresh_token": "新しいリフレッシュトークン",
+        "scope": "許可されたスコープ"
+    }
+    """
+    response = requests.post(
+        TWITTER_TOKEN_ENDPOINT,
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": request.user.refresh_token,
+            "client_id": TWITTER_CLIENT_ID,
+        },
+        auth=(
+            TWITTER_CLIENT_ID,
+            TWITTER_CLIENT_SECRET,
+        ),
+        timeout=TWITTER_API_TIMEOUT,
+    )
+
     return response
 
 
@@ -188,28 +194,39 @@ def get_me(request: HttpRequest) -> requests.Response:
         TWITTER_USERS_ME_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params={"user.fields": "profile_image_url"},
+        timeout=TWITTER_API_TIMEOUT,
     )
 
     return response
 
 
-def post_media_request(request: HttpRequest, image: UploadedFile) -> requests.Response:
-    """画像をアップロードするリクエスト
+def get_users(request: HttpRequest, user_ids: list[int]) -> requests.Response:
+    """ユーザー情報を複数取得するリクエスト
+
+    user_ids: 取得したいユーザーのIDのリスト。1回で最大100件まで。
 
     response.json() の結果は下記の形。
     {
-        "data": {
-            "id": "アップロードされたメディアのID",
-            "media_key": "メディアのキー",
-        }
+        "data": [
+            {
+                "id": "ユーザーID",
+                "name": "表示名",
+                "username": "ユーザー名(@の後ろ)",
+                "profile_image_url": "アイコン画像のURL"
+            }
+        ]
     }
+    ※ 削除・凍結されたユーザーのIDが含まれていた場合、そのユーザーは dataに入らず、
+      代わりに "errors" キーに理由が入る。
     """
-    image.seek(0)
-    response = requests.post(
-        TWITTER_MEDIA_ENDPOINT,
+    response = requests.get(
+        TWITTER_USERS_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
-        files={"media": image},
-        data={"media_category": "tweet_image"},
+        params={
+            "ids": ",".join(str(user_id) for user_id in user_ids),
+            "user.fields": "profile_image_url",
+        },
+        timeout=TWITTER_API_TIMEOUT,
     )
     return response
 
@@ -237,6 +254,7 @@ def post_tweet_request(request: HttpRequest, payload: dict) -> requests.Response
         TWITTER_TWEET_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         json=payload,
+        timeout=TWITTER_API_TIMEOUT,
     )
     return response
 
@@ -285,6 +303,7 @@ def get_tweet(request: HttpRequest, tweet_id: str | int) -> requests.Response:
             "expansions": "attachments.media_keys",
             "media.fields": "url,type,alt_text,width,height,duration_ms",
         },
+        timeout=TWITTER_API_TIMEOUT,
     )
 
     return response
@@ -317,38 +336,9 @@ def get_all_tweets(
         TWITTER_USER_TWEETS_ENDPOINT.format(user_id=request.user.x_user_id),
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params=params,
+        timeout=TWITTER_API_TIMEOUT,
     )
 
-    return response
-
-
-def get_users(request: HttpRequest, user_ids: list[int]) -> requests.Response:
-    """ユーザー情報を複数取得するリクエスト
-
-    user_ids: 取得したいユーザーのIDのリスト。1回で最大100件まで。
-
-    response.json() の結果は下記の形。
-    {
-        "data": [
-            {
-                "id": "ユーザーID",
-                "name": "表示名",
-                "username": "ユーザー名(@の後ろ)",
-                "profile_image_url": "アイコン画像のURL"
-            }
-        ]
-    }
-    ※ 削除・凍結されたユーザーのIDが含まれていた場合、そのユーザーは dataに入らず、
-      代わりに "errors" キーに理由が入る。
-    """
-    response = requests.get(
-        TWITTER_USERS_ENDPOINT,
-        headers={"Authorization": f"Bearer {request.user.access_token}"},
-        params={
-            "ids": ",".join(str(user_id) for user_id in user_ids),
-            "user.fields": "profile_image_url",
-        },
-    )
     return response
 
 
@@ -389,6 +379,29 @@ def get_replies(
         TWITTER_SEARCH_RECENT_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params=params,
+        timeout=TWITTER_API_TIMEOUT,
     )
 
+    return response
+
+
+def post_media_request(request: HttpRequest, image: UploadedFile) -> requests.Response:
+    """画像をアップロードするリクエスト
+
+    response.json() の結果は下記の形。
+    {
+        "data": {
+            "id": "アップロードされたメディアのID",
+            "media_key": "メディアのキー",
+        }
+    }
+    """
+    image.seek(0)
+    response = requests.post(
+        TWITTER_MEDIA_ENDPOINT,
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        files={"media": image},
+        data={"media_category": "tweet_image"},
+        timeout=TWITTER_API_TIMEOUT,
+    )
     return response

@@ -7,7 +7,12 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from common.utils import request_with_token_refresh, update_tokens
+from common.utils import (
+    CONNECTION_ERROR,
+    request_with_token_refresh,
+    send_or_none,
+    update_tokens,
+)
 from common.x_api_client import (
     MediaResponseData,
     TweetResponseData,
@@ -204,7 +209,9 @@ def save_all_replies(request):
     status, message = "success", None
 
     while True:
-        response = get_replies(request, next_token, since_id)
+        response = send_or_none(get_replies, request, next_token, since_id)
+        if response is None:
+            return JsonResponse(CONNECTION_ERROR)
 
         if response.status_code == 401:
             if not update_tokens(request):
@@ -216,7 +223,9 @@ def save_all_replies(request):
                     }
                 )
             else:
-                response = get_replies(request, next_token, since_id)
+                response = send_or_none(get_replies, request, next_token, since_id)
+                if response is None:
+                    return JsonResponse(CONNECTION_ERROR)
 
         if response.status_code == 400:
             error_message = response.json().get("errors")[0].get("message")

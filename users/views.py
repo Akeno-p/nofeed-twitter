@@ -8,7 +8,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from common.utils import request_with_token_refresh
+from common.utils import request_with_token_refresh, send_or_none
 from common.x_api_client import build_auth_url, get_me, post_token_request
 
 from .decorators import (
@@ -230,14 +230,17 @@ def twitter_auth_callback(request):
     if state is None or state != session_state or code is None:
         return redirect("twitter_auth_error")
 
-    response = post_token_request(code, code_verifier)
+    response = send_or_none(post_token_request, code, code_verifier)
+
+    if response is None:
+        return redirect("twitter_auth_error")
 
     if response.status_code != 200:
         return redirect("twitter_auth_error")
 
     token_data = response.json()
 
-    Account.objects.update_token(
+    Account.objects.update_tokens(
         request.user, token_data["access_token"], token_data["refresh_token"]
     )
 

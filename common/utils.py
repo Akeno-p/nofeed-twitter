@@ -1,20 +1,26 @@
 """
 複数のアプリから使用する共通の関数をまとめたモジュール。
-定数やエンドポイントURLは common/x_api.py に置く。
 """
 
 import logging
 
 import requests
 
-from common.x_api import (
-    TWITTER_CLIENT_ID,
-    TWITTER_CLIENT_SECRET,
-    TWITTER_TOKEN_ENDPOINT,
-)
+from common.x_api_client import post_update_tokens
 from users.models import Account
 
 logger = logging.getLogger(__name__)
+
+CONNECTION_ERROR = {"status": "exception", "message": "接続に失敗しました。"}
+
+
+def send_or_none(send_request, *args) -> requests.Response | None:
+    """リクエストを送り、通信に失敗した場合はログを残して None を返す。"""
+    try:
+        return send_request(*args)
+    except requests.exceptions.RequestException:
+        logger.exception("APIリクエスト失敗")
+        return None
 
 
 def update_tokens(request):
@@ -22,38 +28,19 @@ def update_tokens(request):
 
     成功した場合は True 失敗した場合は Flase  を返す。
     """
+    response = send_or_none(post_update_tokens, request)
 
-    # 呼ぶタイミングによってuserの情報が古く、有効なrefresh_tokenが存在しない場合があるため
-    request.user.refresh_from_db()
-    refresh_token = request.user.refresh_token
-
-    twitter_tokens_endpoint_data = {
-        "grant_type": "refresh_token",
-        "refresh_token": refresh_token,
-        "client_id": TWITTER_CLIENT_ID,
-    }
-
-    new_tokens_response = requests.post(
-        TWITTER_TOKEN_ENDPOINT,
-        data=twitter_tokens_endpoint_data,
-        auth=(
-            TWITTER_CLIENT_ID,
-            TWITTER_CLIENT_SECRET,
-        ),
-    )
-
-    if new_tokens_response.status_code != 200:
+    if response is None:
         return False
 
-    new_tokens_dict = new_tokens_response.json()
-    new_access_token = new_tokens_dict.get("access_token")
-    new_refresh_token = new_tokens_dict.get("refresh_token")
+    if response.status_code != 200:
+        return False
 
-    Account.objects.filter(id=request.user.id).update(
-        access_token=new_access_token, refresh_token=new_refresh_token
+    token_data = response.json()
+
+    Account.objects.update_tokens(
+        request.user, token_data["access_token"], token_data["refresh_token"]
     )
-
-    request.user.refresh_from_db()
 
     return True
 
@@ -67,7 +54,9 @@ def request_with_token_refresh(request, send_request, *args):
     成功時は ("success", response)、
     失敗時は ("error", エラー内容の辞書) を返す。
     """
-    response = send_request(request, *args)
+    response = send_or_none(send_request, request, *args)
+    if response is None:
+        return "error", CONNECTION_ERROR
 
     if response.status_code == 401:
         if not update_tokens(request):
@@ -76,8 +65,9 @@ def request_with_token_refresh(request, send_request, *args):
                 "message": "アクセストークンの更新に失敗しました。",
                 "error_code": response.status_code,
             }
-
-        response = send_request(request, *args)
+        response = send_or_none(send_request, request, *args)
+        if response is None:
+            return "error", CONNECTION_ERROR
 
     if not (200 <= response.status_code < 300):
         logger.error(
