@@ -236,8 +236,8 @@ def twitter_auth_callback(request):
 
     try:
         response = post_token_request(code, code_verifier)
-    except requests.exceptions.RequestException as e:
-        logger.exception("APIリクエスト失敗: %s %s", e.request.method, e.request.url)
+    except requests.exceptions.RequestException:
+        logger.exception("APIリクエスト失敗")
         return redirect("twitter_auth_error")
 
     if response.status_code != 200:

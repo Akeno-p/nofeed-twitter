@@ -19,8 +19,8 @@ def update_tokens(request):
     """
     try:
         response = post_update_tokens(request)
-    except requests.exceptions.RequestException as e:
-        logger.exception("APIリクエスト失敗: %s %s", e.request.method, e.request.url)
+    except requests.exceptions.RequestException:
+        logger.exception("APIリクエスト失敗")
         return False
 
     if response.status_code != 200:
@@ -46,8 +46,8 @@ def request_with_token_refresh(request, send_request, *args):
     """
     try:
         response = send_request(request, *args)
-    except requests.exceptions.RequestException as e:
-        logger.exception("APIリクエスト失敗: %s %s", e.request.method, e.request.url)
+    except requests.exceptions.RequestException:
+        logger.exception("APIリクエスト失敗")
         return "error", {
             "status": "exception",
             "message": "接続に失敗しました。",
