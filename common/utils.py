@@ -17,7 +17,11 @@ def update_tokens(request):
 
     成功した場合は True 失敗した場合は Flase  を返す。
     """
-    response = post_update_tokens(request)
+    try:
+        response = post_update_tokens(request)
+    except requests.exceptions.RequestException as e:
+        logger.exception("APIリクエスト失敗: %s %s", e.request.method, e.request.url)
+        return False
 
     if response.status_code != 200:
         return False
