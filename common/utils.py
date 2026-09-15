@@ -11,16 +11,26 @@ from users.models import Account
 
 logger = logging.getLogger(__name__)
 
+CONNECTION_ERROR = {"status": "exception", "message": "接続に失敗しました。"}
+
+
+def send_or_none(send_request, *args) -> requests.Response | None:
+    """リクエストを送り、通信に失敗した場合はログを残して None を返す。"""
+    try:
+        return send_request(*args)
+    except requests.exceptions.RequestException:
+        logger.exception("APIリクエスト失敗")
+        return None
+
 
 def update_tokens(request):
     """リフレッシュトークンを使って、アクセストークンを新しくする。
 
     成功した場合は True 失敗した場合は Flase  を返す。
     """
-    try:
-        response = post_update_tokens(request)
-    except requests.exceptions.RequestException:
-        logger.exception("APIリクエスト失敗")
+    response = send_or_none(post_update_tokens, request)
+
+    if response is None:
         return False
 
     if response.status_code != 200:
@@ -44,14 +54,9 @@ def request_with_token_refresh(request, send_request, *args):
     成功時は ("success", response)、
     失敗時は ("error", エラー内容の辞書) を返す。
     """
-    try:
-        response = send_request(request, *args)
-    except requests.exceptions.RequestException:
-        logger.exception("APIリクエスト失敗")
-        return "error", {
-            "status": "exception",
-            "message": "接続に失敗しました。",
-        }
+    response = send_or_none(send_request, request, *args)
+    if response is None:
+        return "error", CONNECTION_ERROR
 
     if response.status_code == 401:
         if not update_tokens(request):
@@ -60,17 +65,9 @@ def request_with_token_refresh(request, send_request, *args):
                 "message": "アクセストークンの更新に失敗しました。",
                 "error_code": response.status_code,
             }
-
-        try:
-            response = send_request(request, *args)
-        except requests.exceptions.RequestException as e:
-            logger.exception(
-                "APIリクエスト失敗: %s %s", e.request.method, e.request.url
-            )
-            return "error", {
-                "status": "exception",
-                "message": "接続に失敗しました。",
-            }
+        response = send_or_none(send_request, request, *args)
+        if response is None:
+            return "error", CONNECTION_ERROR
 
     if not (200 <= response.status_code < 300):
         logger.error(

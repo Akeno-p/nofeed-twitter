@@ -1,8 +1,6 @@
-import logging
 import secrets
 
 import pyotp
-import requests
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -10,7 +8,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from common.utils import request_with_token_refresh
+from common.utils import request_with_token_refresh, send_or_none
 from common.x_api_client import build_auth_url, get_me, post_token_request
 
 from .decorators import (
@@ -20,8 +18,6 @@ from .decorators import (
 from .models import Account, XUser
 from .totp import make_qrcode_b64
 from .x_oauth import make_code_challenge
-
-logger = logging.getLogger(__name__)
 
 
 @redirect_to_tweets_if_logged_in
@@ -234,10 +230,9 @@ def twitter_auth_callback(request):
     if state is None or state != session_state or code is None:
         return redirect("twitter_auth_error")
 
-    try:
-        response = post_token_request(code, code_verifier)
-    except requests.exceptions.RequestException:
-        logger.exception("APIリクエスト失敗")
+    response = send_or_none(post_token_request, code, code_verifier)
+
+    if response is None:
         return redirect("twitter_auth_error")
 
     if response.status_code != 200:

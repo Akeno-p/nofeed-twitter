@@ -1,14 +1,18 @@
 import logging
 
-import requests
 from django.contrib.auth.decorators import login_required
 from django.core.files.uploadedfile import UploadedFile
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from common.utils import request_with_token_refresh, update_tokens
+from common.utils import (
+    CONNECTION_ERROR,
+    request_with_token_refresh,
+    send_or_none,
+    update_tokens,
+)
 from common.x_api_client import (
     MediaResponseData,
     TweetResponseData,
@@ -205,13 +209,9 @@ def save_all_replies(request):
     status, message = "success", None
 
     while True:
-        try:
-            response = get_replies(request, next_token, since_id)
-        except requests.exceptions.RequestException:
-            logger.exception("APIリクエスト失敗")
-            return JsonResponse(
-                {"status": "exception", "message": "接続に失敗しました。"}
-            )
+        response = send_or_none(get_replies, request, next_token, since_id)
+        if response is None:
+            return JsonResponse(CONNECTION_ERROR)
 
         if response.status_code == 401:
             if not update_tokens(request):
@@ -223,13 +223,9 @@ def save_all_replies(request):
                     }
                 )
             else:
-                try:
-                    response = get_replies(request, next_token, since_id)
-                except requests.exceptions.RequestException:
-                    logger.exception("APIリクエスト失敗")
-                    return JsonResponse(
-                        {"status": "exception", "message": "接続に失敗しました。"}
-                    )
+                response = send_or_none(get_replies, request, next_token, since_id)
+                if response is None:
+                    return JsonResponse(CONNECTION_ERROR)
 
         if response.status_code == 400:
             error_message = response.json().get("errors")[0].get("message")
