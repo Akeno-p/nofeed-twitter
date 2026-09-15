@@ -1,9 +1,10 @@
 import logging
 
+import requests
 from django.contrib.auth.decorators import login_required
 from django.core.files.uploadedfile import UploadedFile
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
@@ -204,7 +205,13 @@ def save_all_replies(request):
     status, message = "success", None
 
     while True:
-        response = get_replies(request, next_token, since_id)
+        try:
+            response = get_replies(request, next_token, since_id)
+        except requests.exceptions.RequestException:
+            logger.exception("APIリクエスト失敗")
+            return JsonResponse(
+                {"status": "exception", "message": "接続に失敗しました。"}
+            )
 
         if response.status_code == 401:
             if not update_tokens(request):
@@ -216,7 +223,13 @@ def save_all_replies(request):
                     }
                 )
             else:
-                response = get_replies(request, next_token, since_id)
+                try:
+                    response = get_replies(request, next_token, since_id)
+                except requests.exceptions.RequestException:
+                    logger.exception("APIリクエスト失敗")
+                    return JsonResponse(
+                        {"status": "exception", "message": "接続に失敗しました。"}
+                    )
 
         if response.status_code == 400:
             error_message = response.json().get("errors")[0].get("message")
