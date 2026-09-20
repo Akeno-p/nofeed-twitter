@@ -106,7 +106,7 @@ class ConversationManager(models.Manager):
                 update_conversations.append(conversation)
 
         self.bulk_create(new_conversations)
-        self.bulk_update(update_conversations)
+        self.bulk_update(update_conversations, ["last_message_at"])
         return conversations_by_dm_conversation_id
 
 
