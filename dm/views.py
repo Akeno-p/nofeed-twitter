@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -13,6 +14,7 @@ from common.x_api_client import (
     MediaResponseData,
     get_dm_events,
     get_users,
+    post_dm_request,
 )
 from dm.models import Conversation, DirectMessage, DirectMessageMedia
 from users.models import XUser
@@ -32,7 +34,10 @@ GET_USERS_MAX_IDS = 100
 
 @login_required
 def dm_view(request):
-    return render(request, "dm/dm.html")
+    """DMページを開いた時の処理"""
+    conversations = Conversation.objects.for_display(request.user)
+
+    return render(request, "dm/dm.html", {"conversations": conversations})
 
 
 @require_POST
@@ -80,7 +85,55 @@ def save_all_dms(request):
     if save_status == "error":
         return JsonResponse(save_result)
 
-    return JsonResponse({"status": status, "message": message})
+    conversations = Conversation.objects.for_display(request.user)
+
+    html = render_to_string(
+        "dm/_dm_body.html", {"conversations": conversations}, request=request
+    )
+
+    return JsonResponse({"status": status, "message": message, "html": html})
+
+
+@require_POST
+@login_required
+def post_dm(request):
+    """DMの送信ボタンを押した時の処理"""
+    dm_text = request.POST.get("dmText")
+    conversation_id = request.POST.get("conversationId")
+
+    conversation = Conversation.objects.filter(id=conversation_id).first()
+
+    if conversation is None:
+        return JsonResponse(
+            {"status": "exception", "message": "送信先の会話が見つかりませんでした。"}
+        )
+
+    status, result = request_with_token_refresh(
+        request, post_dm_request, conversation.dm_conversation_id, dm_text
+    )
+
+    if status == "error":
+        return JsonResponse(result)
+
+    dm_event_id = result.json()["data"]["dm_event_id"]
+
+    # 送信のレスポンスには本文や送信日時が入っていないため、手元の値で保存している。
+    # 取り直す場合、DMには1件だけ取得するエンドポイントがなく、別途料金がかかる。
+    direct_message = DirectMessage.objects.create_sent_dm(
+        dm_event_id, conversation, request.user, dm_text
+    )
+
+    Conversation.objects.update_last_message_at(
+        conversation, direct_message.created_at
+    )
+
+    conversations = Conversation.objects.for_display(request.user)
+
+    html = render_to_string(
+        "dm/_dm_body.html", {"conversations": conversations}, request=request
+    )
+
+    return JsonResponse({"status": "success", "html": html})
 
 
 def _fetch_new_dms(request, saved_dm_ids: set[int]):

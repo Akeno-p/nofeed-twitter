@@ -1,0 +1,59 @@
+<!-- prettier-ignore -->
+<div class="hidden h-full flex flex-col" data-thread="{{ conversation.id }}">
+  <div class="flex items-center gap-3 px-6 py-3 border-b-2 border-slate-200">
+    {% if conversation.participant %}
+    <img
+      class="rounded-full size-10"
+      src="{{ conversation.participant.profile_image_url }}"
+      alt="{{ conversation.participant.name }}のアイコン"
+    />
+    {% else %}
+    <div class="rounded-full size-10 bg-slate-200"></div>
+    {% endif %}
+    <div class="flex gap-2 items-baseline">
+      <p class="font-semibold text-lg">
+        {{ conversation.participant.name|default:"ユーザー情報なし" }}
+      </p>
+      <p class="font-light text-slate-500">
+        @{{ conversation.participant.username }}
+      </p>
+    </div>
+  </div>
+  <div class="flex-1 flex flex-col gap-3 px-6 py-4 overflow-y-auto" data-messages>
+    {% for direct_message in conversation.messages.all %}
+      {% ifchanged direct_message.display_date %}
+      <p class="self-center text-slate-500">{{ direct_message.display_date }}</p>
+      {% endifchanged %}
+      {% include "dm/_direct_messages.html" %}
+    {% endfor %}
+  </div>
+  <div class="flex items-end gap-3 pb-8 px-6 py-4 border-t-2 border-slate-200">
+    <textarea
+      data-dm-text="{{ conversation.id }}"
+      class="flex-1 text-lg max-h-40 resize-none field-sizing-content border-b-2 border-slate-500 focus:outline-none"
+      placeholder="メッセージを入力..."
+    ></textarea>
+    <button
+      class="bg-slate-700 text-slate-100 rounded-lg p-2 hover:bg-slate-800 cursor-pointer w-32"
+      data-dm-button="{{ conversation.id }}"
+    >
+      <div class="flex justify-center items-center gap-2">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-6"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+          />
+        </svg>
+        <p>送信</p>
+      </div>
+    </button>
+  </div>
+</div>

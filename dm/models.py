@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import TypedDict
 
 from django.db import models
-from django.db.models import QuerySet
+from django.db.models import F, Prefetch, QuerySet
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from common.x_api_client import DirectMessageResponseData, MediaResponseData
@@ -23,6 +24,36 @@ class DirectMessageMediaPair(TypedDict):
 
 
 class ConversationManager(models.Manager):
+    def for_display(self, account: Account) -> list[Conversation]:
+        """会話を最後のメッセージが新しい順に、表示用に整えて返す。
+
+        会話にはDM(古い順)が紐づいた状態で返る。
+        """
+        direct_messages = (
+            DirectMessage.objects.select_related("sender")
+            .prefetch_related("media")
+            .order_by("created_at")
+        )
+
+        conversations = list(
+            self.select_related("participant")
+            .prefetch_related(Prefetch("messages", queryset=direct_messages))
+            .order_by(F("last_message_at").desc(nulls_last=True))
+        )
+
+        for conversation in conversations:
+            conversation.decorate(account)
+
+        return conversations
+
+    def update_last_message_at(
+        self, conversation: Conversation, last_message_at: datetime
+    ) -> None:
+        """会話の最後のメッセージ日時を更新する。戻り値はない。"""
+        conversation.last_message_at = last_message_at
+
+        conversation.save()
+
     def participant_ids(
         self, dm_responses: list[DirectMessageResponseData], account: Account
     ) -> set[int]:
@@ -134,6 +165,47 @@ class Conversation(models.Model):
     class Meta:
         db_table = "conversations"
 
+    def decorate(self, account: Account) -> None:
+        """会話一覧とスレッドの表示用にデータを整える。
+
+        戻り値はなく、渡された self に下記をセットする。
+        last_message : 会話の最後のDM(1件もない場合はNone)
+        display_last_message_at : 会話一覧に表示する日時
+        また、会話に紐づくDMも表示用に整える。
+        """
+        direct_messages = list(self.messages.all())
+
+        for direct_message in direct_messages:
+            direct_message.decorate(account)
+
+        self.last_message = direct_messages[-1] if direct_messages else None
+
+        self.set_display_last_message_at()
+
+    def set_display_last_message_at(self):
+        """会話に、一覧表示用の最後のメッセージ日時を display_last_message_at としてセットする。
+
+        表示形式は最後のメッセージの送信日時によって変わる。
+        当日は「14:31」、それ以外は「9月15日」。
+
+        最後のメッセージの表示用の日付・時刻を使うため、decorate() で
+        self.last_message をセットしたあとに呼ぶ。
+
+        戻り値はなく、渡された self に.display_last_message_atをセットする。
+        """
+        if self.last_message is None:
+            self.display_last_message_at = ""
+            return
+
+        now = timezone.localtime()
+        local_created_at = timezone.localtime(self.last_message.created_at)
+
+        if local_created_at.date() == now.date():
+            self.display_last_message_at = self.last_message.display_time
+            return
+
+        self.display_last_message_at = self.last_message.display_date
+
     @staticmethod
     def is_one_to_one(dm_conversation_id: str) -> bool:
         """会話IDが1対1のDMのものであれば True を返す。
@@ -164,6 +236,29 @@ class DirectMessageManager(models.Manager):
     def last_dm(self) -> DirectMessage | None:
         """最新のDMを返す"""
         return self.order_by("-created_at").first()
+
+    def create_sent_dm(
+        self, dm_id: int, conversation: Conversation, account: Account, text: str
+    ) -> DirectMessage:
+        """送信したDMを1件保存する。
+
+        送信のレスポンスにはDMのIDしか入っていないため、本文と送信日時は手元の値で保存する。
+
+        dm_id: 送信したDMのID(レスポンスの dm_event_id)
+        conversation: 送信先の会話
+        text: 送信した本文
+        """
+        direct_message = DirectMessage(
+            id=dm_id,
+            conversation=conversation,
+            sender_id=account.x_user_id,
+            text=text,
+            created_at=timezone.now(),
+        )
+
+        direct_message.save()
+
+        return direct_message
 
     def bulk_create_from_responses(
         self,
@@ -245,6 +340,46 @@ class DirectMessage(models.Model):
 
     class Meta:
         db_table = "direct_messages"
+
+    def strip_media_link(self):
+        """メディア付きDMの本文末尾に付く t.co リンクを取り除く。"""
+        self.text = self.text.rsplit("https://t.co", 1)[0]
+
+    def set_display_created_at(self):
+        """DMに、表示用の送信日時を display_date と display_time としてセットする。
+
+        display_date はスレッドの日付の区切りに表示する日付で、
+        同じ年は「9月15日」、それ以外は「2025年9月15日」。
+        display_time はDMに表示する時刻で「14:31」。
+
+        戻り値はなく、渡された self に.display_dateと.display_timeをセットする。
+        """
+        now = timezone.localtime()
+        local_created_at = timezone.localtime(self.created_at)
+
+        # strftimeを使用すると09月15日のように0埋めになってしまうため
+        month_day = f"{local_created_at.month}月{local_created_at.day}日"
+
+        if local_created_at.year == now.year:
+            self.display_date = month_day
+        else:
+            self.display_date = f"{local_created_at.year}年{month_day}"
+
+        self.display_time = local_created_at.strftime("%H:%M")
+
+    def decorate(self, account: Account) -> None:
+        """スレッドの表示用にデータを整える。
+
+        戻り値はなく、渡された self に下記をセットする。
+        is_mine : 自分が送ったDMかどうか
+        display_date : スレッドの日付の区切りに表示する日付
+        display_time : DMに表示する時刻
+        """
+        self.is_mine = self.sender_id == account.x_user_id
+        self.set_display_created_at()
+
+        if self.media.all():
+            self.strip_media_link()
 
 
 class DirectMessageMediaManager(models.Manager):

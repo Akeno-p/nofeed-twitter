@@ -16,6 +16,7 @@ from common.x_api import (
     TWITTER_CLIENT_ID,
     TWITTER_CLIENT_SECRET,
     TWITTER_DM_EVENTS_ENDPOINT,
+    TWITTER_DM_MESSAGES_ENDPOINT,
     TWITTER_GET_TWEET_ENDPOINT,
     TWITTER_MEDIA_ENDPOINT,
     TWITTER_REDIRECT_URI,
@@ -443,6 +444,33 @@ def get_dm_events(
         TWITTER_DM_EVENTS_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params=params,
+        timeout=TWITTER_API_TIMEOUT,
+    )
+
+    return response
+
+
+def post_dm_request(
+    request: HttpRequest, dm_conversation_id: str, text: str
+) -> requests.Response:
+    """DMを送信するリクエスト
+
+    dm_conversation_id: 送信先の会話ID(相手と共有しているもの)
+    text: 送信する本文
+
+    response.json() の結果は下記の形。
+    {
+        "data": {
+            "dm_conversation_id": "送信先の会話ID",
+            "dm_event_id": "送信したDMのID"
+        }
+    }
+    ※ 送信に成功した場合のステータスコードは 201。
+    """
+    response = requests.post(
+        TWITTER_DM_MESSAGES_ENDPOINT.format(dm_conversation_id=dm_conversation_id),
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        json={"text": text},
         timeout=TWITTER_API_TIMEOUT,
     )
 

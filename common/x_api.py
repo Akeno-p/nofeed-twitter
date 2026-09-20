@@ -41,6 +41,10 @@ TWITTER_USER_TWEETS_ENDPOINT = "https://api.x.com/2/users/{user_id}/tweets"
 TWITTER_SEARCH_RECENT_ENDPOINT = "https://api.x.com/2/tweets/search/recent"
 # GET：自分が参加しているDMを新しい順に取得(直近30日分のみ)
 TWITTER_DM_EVENTS_ENDPOINT = "https://api.x.com/2/dm_events"
+# POST：DMの送信
+TWITTER_DM_MESSAGES_ENDPOINT = (
+    "https://api.x.com/2/dm_conversations/{dm_conversation_id}/messages"
+)
 
 # ===== その他 =====
 

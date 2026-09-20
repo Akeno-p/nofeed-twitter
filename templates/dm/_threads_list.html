@@ -1,0 +1,10 @@
+<!-- prettier-ignore -->
+<div id="threads-list" class="flex-1 min-w-0">
+  {% for conversation in conversations %}
+    {% include "dm/_threads.html" %}
+  {% empty %}
+  <div class="h-full flex items-center justify-center">
+    <p class="text-slate-500">右上の「DM取得」からDMを取得してください。</p>
+  </div>
+  {% endfor %}
+</div>
