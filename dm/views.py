@@ -101,6 +101,9 @@ def post_dm(request):
     dm_text = request.POST.get("dmText")
     conversation_id = request.POST.get("conversationId")
 
+    if not dm_text:
+        return JsonResponse({"status": "error", "message": "文章を入力してください。"})
+
     conversation = Conversation.objects.filter(id=conversation_id).first()
 
     if conversation is None:
