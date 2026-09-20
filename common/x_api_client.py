@@ -15,6 +15,8 @@ from common.x_api import (
     TWITTER_AUTH_ENDPOINT,
     TWITTER_CLIENT_ID,
     TWITTER_CLIENT_SECRET,
+    TWITTER_DM_EVENTS_ENDPOINT,
+    TWITTER_DM_MESSAGES_ENDPOINT,
     TWITTER_GET_TWEET_ENDPOINT,
     TWITTER_MEDIA_ENDPOINT,
     TWITTER_REDIRECT_URI,
@@ -73,6 +75,28 @@ class MediaResponseData(TypedDict, total=False):
     width: int
     height: int
     duration_ms: int
+
+
+class DirectMessageResponseData(TypedDict, total=False):
+    """DM1件分のデータの形
+    get_dm_events のresponseを .json().get("data", [])した時の形
+
+    "id": "DMのID",
+    "text": "本文",
+    "event_type": "MessageCreate",
+    "dm_conversation_id": "会話ID(1対1のDMは 小さいユーザーID-大きいユーザーID)",
+    "created_at": "送信日時(例：2025-08-02T10:30:00.000Z)",
+    "sender_id": "送信者のユーザーID",
+    "attachments": {"media_keys":["media_keyのリスト"]}
+    """
+
+    id: str
+    text: str
+    event_type: str
+    dm_conversation_id: str
+    created_at: str
+    sender_id: str
+    attachments: dict
 
 
 class XUserResponseData(TypedDict):
@@ -379,6 +403,74 @@ def get_replies(
         TWITTER_SEARCH_RECENT_ENDPOINT,
         headers={"Authorization": f"Bearer {request.user.access_token}"},
         params=params,
+        timeout=TWITTER_API_TIMEOUT,
+    )
+
+    return response
+
+
+def get_dm_events(
+    request: HttpRequest, max_results: int, next_token: str | None = None
+) -> requests.Response:
+    """自分が参加しているDMを新しい順に一覧取得するリクエスト
+
+    取得できるのは直近30日分のみ。グループDMも含まれる。
+    max_results: 1回で取得する件数。1〜100まで。
+    next_token: 2ページ目以降を取得するときだけ入れる。
+
+    response.json() の結果は下記の形。
+    {
+        "data": [DirectMessageResponseData],
+        "includes": {"media": [MediaResponseData]},
+        "meta": {
+            "result_count": 取得できた件数,
+            "next_token": "次のページがあるときだけ入る"
+        }
+    }
+    ※ 該当するDMが0件の場合、"data" と "includes" は入らない。
+    """
+    params = {
+        "max_results": max_results,
+        "event_types": "MessageCreate",
+        "dm_event.fields": "id,text,event_type,dm_conversation_id,created_at,sender_id,attachments",
+        "expansions": "attachments.media_keys",
+        "media.fields": "url,type,alt_text,width,height,duration_ms",
+    }
+
+    if next_token:
+        params["pagination_token"] = next_token
+
+    response = requests.get(
+        TWITTER_DM_EVENTS_ENDPOINT,
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        params=params,
+        timeout=TWITTER_API_TIMEOUT,
+    )
+
+    return response
+
+
+def post_dm_request(
+    request: HttpRequest, dm_conversation_id: str, text: str
+) -> requests.Response:
+    """DMを送信するリクエスト
+
+    dm_conversation_id: 送信先の会話ID(相手と共有しているもの)
+    text: 送信する本文
+
+    response.json() の結果は下記の形。
+    {
+        "data": {
+            "dm_conversation_id": "送信先の会話ID",
+            "dm_event_id": "送信したDMのID"
+        }
+    }
+    ※ 送信に成功した場合のステータスコードは 201。
+    """
+    response = requests.post(
+        TWITTER_DM_MESSAGES_ENDPOINT.format(dm_conversation_id=dm_conversation_id),
+        headers={"Authorization": f"Bearer {request.user.access_token}"},
+        json={"text": text},
         timeout=TWITTER_API_TIMEOUT,
     )
 

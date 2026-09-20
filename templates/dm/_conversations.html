@@ -1,0 +1,30 @@
+<div
+  class="flex gap-3 px-4 py-3 border-b-2 border-slate-200 cursor-pointer hover:bg-slate-100"
+  data-conversation="{{ conversation.id }}"
+>
+  {% if conversation.participant %}
+  <img
+    class="rounded-full size-12 shrink-0"
+    src="{{ conversation.participant.profile_image_url }}"
+    alt="{{ conversation.participant.name }}のアイコン"
+  />
+  {% else %}
+  <div class="rounded-full size-12 shrink-0 bg-slate-200"></div>
+  {% endif %}
+  <div class="flex-1 min-w-0">
+    <div class="flex gap-2 items-center">
+      {% if conversation.participant %}
+      <p class="font-semibold truncate">{{ conversation.participant.name }}</p>
+      <p class="font-light text-slate-500 truncate">
+        @{{ conversation.participant.username }}
+      </p>
+      {% else %}
+      <p class="font-semibold truncate">ユーザー情報なし</p>
+      {% endif %}
+      <p class="font-light text-slate-500 ml-auto shrink-0">
+        {{ conversation.display_last_message_at }}
+      </p>
+    </div>
+    <p class="text-slate-500 truncate">{{ conversation.last_message.text }}</p>
+  </div>
+</div>

@@ -1,0 +1,11 @@
+<!-- prettier-ignore -->
+<div
+  id="conversations-list"
+  class="w-96 shrink-0 border-r-2 border-slate-300 overflow-y-auto"
+>
+  {% for conversation in conversations %}
+    {% include "dm/_conversations.html" %}
+  {% empty %}
+  <p class="text-slate-500 p-6">DMがありません。</p>
+  {% endfor %}
+</div>

@@ -26,6 +26,11 @@ class XUserManager(models.Manager):
 
         return not_saved_author_ids
 
+    def not_saved_user_ids(self, user_ids: list[int]) -> list[int]:
+        """渡したユーザーIDのうち、未保存のものを返す"""
+        saved_user_ids = set(self.all_user_ids())
+        return [user_id for user_id in user_ids if user_id not in saved_user_ids]
+
     def bulk_create_from_responses(
         self, x_user_responses: list[XUserResponseData]
     ) -> None:

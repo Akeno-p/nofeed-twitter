@@ -1,0 +1,27 @@
+<!-- prettier-ignore -->
+{% if direct_message.is_mine %}
+<div class="flex justify-end items-end gap-2">
+  <p class="text-slate-400 shrink-0">{{ direct_message.display_time }}</p>
+  <div class="bg-slate-700 text-slate-100 rounded-2xl px-4 py-2 max-w-lg">
+    <p class="whitespace-pre-wrap">{{ direct_message.text }}</p>
+    {% include "dm/_direct_message_media.html" %}
+  </div>
+</div>
+{% else %}
+<div class="flex items-end gap-2">
+  {% if direct_message.sender %}
+  <img
+    class="rounded-full size-10 shrink-0"
+    src="{{ direct_message.sender.profile_image_url }}"
+    alt="{{ direct_message.sender.name }}のアイコン"
+  />
+  {% else %}
+  <div class="rounded-full size-10 shrink-0 bg-slate-200"></div>
+  {% endif %}
+  <div class="bg-slate-200 rounded-2xl px-4 py-2 max-w-lg">
+    <p class="whitespace-pre-wrap">{{ direct_message.text }}</p>
+    {% include "dm/_direct_message_media.html" %}
+  </div>
+  <p class="text-slate-400 shrink-0">{{ direct_message.display_time }}</p>
+</div>
+{% endif %}

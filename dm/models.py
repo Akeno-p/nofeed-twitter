@@ -1,8 +1,166 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import TypedDict
+
 from django.db import models
+from django.db.models import F, Prefetch, QuerySet
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+
+from common.x_api_client import DirectMessageResponseData, MediaResponseData
+from users.models import Account
+
+
+class DirectMessageMediaPair(TypedDict):
+    """メディアキー(pk)とそれに紐づくDMのID(pk)を持った辞書
+
+    media_key: メディアキー(DirectMessageMedia.media_key)
+    direct_message_id: DMのID(DirectMessage.id)
+    """
+
+    media_key: str
+    direct_message_id: int
+
+
+class ConversationManager(models.Manager):
+    def for_display(self, account: Account) -> list[Conversation]:
+        """会話を最後のメッセージが新しい順に、表示用に整えて返す。
+
+        会話にはDM(古い順)が紐づいた状態で返る。
+        """
+        direct_messages = (
+            DirectMessage.objects.select_related("sender")
+            .prefetch_related("media")
+            .order_by("created_at")
+        )
+
+        conversations = list(
+            self.select_related("participant")
+            .prefetch_related(Prefetch("messages", queryset=direct_messages))
+            .order_by(F("last_message_at").desc(nulls_last=True))
+        )
+
+        for conversation in conversations:
+            conversation.decorate(account)
+
+        return conversations
+
+    def update_last_message_at(
+        self, conversation: Conversation, last_message_at: datetime
+    ) -> None:
+        """会話の最後のメッセージ日時を更新する。戻り値はない。"""
+        conversation.last_message_at = last_message_at
+
+        conversation.save()
+
+    def participant_ids(
+        self, dm_responses: list[DirectMessageResponseData], account: Account
+    ) -> set[int]:
+        """1対1のDMのリストから、会話相手のユーザーIDを重複なしで返す"""
+        participant_ids = set()
+        for response in dm_responses:
+            participant_id = Conversation.participant_id_from(
+                response["dm_conversation_id"], account
+            )
+            participant_ids.add(participant_id)
+
+        return participant_ids
+
+    def save_from_responses(
+        self,
+        dm_responses: list[DirectMessageResponseData],
+        account: Account,
+        saved_user_ids: set[int],
+    ) -> dict[str, Conversation]:
+        """1対1のDMのリストから会話を保存する。
+
+        未保存の会話は新しく作成し、保存済みの会話は最後のメッセージ日時を更新する。
+        保存済みの会話の会話相手が空の場合は、保存できるようになっていれば埋め直す。
+
+        dm_responses: 保存したいDM。
+        saved_user_ids: 保存済みのXユーザーID。会話相手が未保存の場合は会話相手を空にする。
+
+        戻り値は dm_conversation_id がキー Conversationインスタンス が値 の辞書。
+        """
+        last_message_at_by_dm_conversation_id: dict[str, datetime] = {}
+
+        for dm_response in dm_responses:
+            dm_conversation_id = dm_response["dm_conversation_id"]
+            created_at = parse_datetime(dm_response["created_at"])
+            last_message_at = last_message_at_by_dm_conversation_id.get(
+                dm_conversation_id
+            )
+
+            if last_message_at is None or created_at > last_message_at:
+                last_message_at_by_dm_conversation_id[dm_conversation_id] = created_at
+
+        conversations_by_dm_conversation_id = {}
+
+        for conversation in self.filter(
+            dm_conversation_id__in=last_message_at_by_dm_conversation_id.keys()
+        ):
+            conversations_by_dm_conversation_id[conversation.dm_conversation_id] = (
+                conversation
+            )
+
+        new_conversations = []
+        update_conversations = []
+        for (
+            dm_conversation_id,
+            last_message_at,
+        ) in last_message_at_by_dm_conversation_id.items():
+            conversation = conversations_by_dm_conversation_id.get(dm_conversation_id)
+
+            if conversation is None:
+                participant_id = Conversation.participant_id_from(
+                    dm_conversation_id, account
+                )
+
+                if participant_id not in saved_user_ids:
+                    participant_id = None
+
+                conversation = Conversation(
+                    participant_id=participant_id,
+                    dm_conversation_id=dm_conversation_id,
+                    last_message_at=last_message_at,
+                )
+                new_conversations.append(conversation)
+
+                conversations_by_dm_conversation_id[dm_conversation_id] = conversation
+                continue
+
+            is_updated = False
+
+            if (
+                conversation.last_message_at is None
+                or last_message_at > conversation.last_message_at
+            ):
+                conversation.last_message_at = last_message_at
+                is_updated = True
+
+            # 会話相手が凍結などで保存できていなかった場合に、保存できていれば埋め直すため
+            if conversation.participant_id is None:
+                participant_id = Conversation.participant_id_from(
+                    dm_conversation_id, account
+                )
+
+                if participant_id in saved_user_ids:
+                    conversation.participant_id = participant_id
+                    is_updated = True
+
+            if is_updated:
+                update_conversations.append(conversation)
+
+        self.bulk_create(new_conversations)
+        self.bulk_update(update_conversations, ["last_message_at", "participant"])
+        return conversations_by_dm_conversation_id
 
 
 class Conversation(models.Model):
     """DMの会話単位"""
+
+    objects = ConversationManager()
 
     id = models.BigAutoField(primary_key=True, help_text="DMの会話ID")
     participant = models.ForeignKey(
@@ -23,9 +181,158 @@ class Conversation(models.Model):
     class Meta:
         db_table = "conversations"
 
+    def decorate(self, account: Account) -> None:
+        """会話一覧とスレッドの表示用にデータを整える。
+
+        戻り値はなく、渡された self に下記をセットする。
+        last_message : 会話の最後のDM(1件もない場合はNone)
+        display_last_message_at : 会話一覧に表示する日時
+        また、会話に紐づくDMも表示用に整える。
+        """
+        direct_messages = list(self.messages.all())
+
+        for direct_message in direct_messages:
+            direct_message.decorate(account)
+
+        self.last_message = direct_messages[-1] if direct_messages else None
+
+        self.set_display_last_message_at()
+
+    def set_display_last_message_at(self):
+        """会話に、一覧表示用の最後のメッセージ日時を display_last_message_at としてセットする。
+
+        表示形式は最後のメッセージの送信日時によって変わる。
+        当日は「14:31」、それ以外は「9月15日」。
+
+        最後のメッセージの表示用の日付・時刻を使うため、decorate() で
+        self.last_message をセットしたあとに呼ぶ。
+
+        戻り値はなく、渡された self に.display_last_message_atをセットする。
+        """
+        if self.last_message is None:
+            self.display_last_message_at = ""
+            return
+
+        now = timezone.localtime()
+        local_created_at = timezone.localtime(self.last_message.created_at)
+
+        if local_created_at.date() == now.date():
+            self.display_last_message_at = self.last_message.display_time
+            return
+
+        self.display_last_message_at = self.last_message.display_date
+
+    @staticmethod
+    def is_one_to_one(dm_conversation_id: str) -> bool:
+        """会話IDが1対1のDMのものであれば True を返す。
+
+        1対1のDMの会話IDは「小さいユーザーID-大きいユーザーID」の形式で、
+        グループDMの会話IDは数字のみの形式になっている。
+        """
+        return "-" in dm_conversation_id
+
+    @staticmethod
+    def participant_id_from(dm_conversation_id: str, account: Account) -> int:
+        """1対1のDMの会話IDから、会話相手のユーザーIDを返す。"""
+        user_ids = [int(user_id) for user_id in dm_conversation_id.split("-")]
+
+        for user_id in user_ids:
+            if user_id != account.x_user_id:
+                return user_id
+
+        # 自分自身とのDMの場合
+        return account.x_user_id
+
+
+class DirectMessageManager(models.Manager):
+    def all_dm_ids(self) -> QuerySet[int]:
+        """すべてのDMのIDを返す"""
+        return self.values_list("id", flat=True)
+
+    def last_dm(self) -> DirectMessage | None:
+        """最新のDMを返す"""
+        return self.order_by("-created_at").first()
+
+    def create_sent_dm(
+        self, dm_id: int, conversation: Conversation, account: Account, text: str
+    ) -> DirectMessage:
+        """送信したDMを1件保存する。
+
+        送信のレスポンスにはDMのIDしか入っていないため、本文と送信日時は手元の値で保存する。
+
+        dm_id: 送信したDMのID(レスポンスの dm_event_id)
+        conversation: 送信先の会話
+        text: 送信した本文
+        """
+        direct_message = DirectMessage(
+            id=dm_id,
+            conversation=conversation,
+            sender_id=account.x_user_id,
+            text=text,
+            created_at=timezone.now(),
+        )
+
+        direct_message.save()
+
+        return direct_message
+
+    def bulk_create_from_responses(
+        self,
+        dm_responses: list[DirectMessageResponseData],
+        conversations_by_dm_conversation_id: dict[str, Conversation],
+        saved_user_ids: set[int],
+    ) -> list[DirectMessageMediaPair]:
+        """リストで渡したDMのうち、未保存のものを保存する。
+
+        dm_responses: 保存したいDM。
+        conversations_by_dm_conversation_id: dm_conversation_id をキーにした、DMの紐づけ先の会話の辞書。
+        saved_user_ids: 保存済みのXユーザーID。送信者が未保存の場合は送信者を空にする。
+
+        戻り値は、DMに添付されたメディアのメディアキーとDMのIDの組のリスト。
+        """
+        saved_dm_ids = set(self.all_dm_ids())
+        direct_messages = []
+        dm_media_pairs = []
+
+        for response in dm_responses:
+            dm_id = int(response["id"])
+
+            media_keys = response.get("attachments", {}).get("media_keys", [])
+
+            for media_key in media_keys:
+                dm_media_pairs.append(
+                    {"media_key": media_key, "direct_message_id": dm_id}
+                )
+
+            if dm_id in saved_dm_ids:
+                continue
+
+            sender_id = int(response["sender_id"])
+
+            if sender_id not in saved_user_ids:
+                sender_id = None
+
+            direct_message = DirectMessage(
+                id=dm_id,
+                conversation=conversations_by_dm_conversation_id[
+                    response["dm_conversation_id"]
+                ],
+                sender_id=sender_id,
+                text=response.get("text", ""),
+                created_at=response["created_at"],
+            )
+            direct_messages.append(direct_message)
+            saved_dm_ids.add(dm_id)
+
+        self.bulk_create(direct_messages)
+
+        return dm_media_pairs
+
 
 class DirectMessage(models.Model):
     """DMメッセージ"""
+
+    objects = DirectMessageManager()
 
     id = models.BigIntegerField(primary_key=True, help_text="DMメッセージ ID")
     conversation = models.ForeignKey(
@@ -50,9 +357,99 @@ class DirectMessage(models.Model):
     class Meta:
         db_table = "direct_messages"
 
+    def strip_media_link(self):
+        """メディア付きDMの本文末尾に付く t.co リンクを取り除く。"""
+        self.text = self.text.rsplit("https://t.co", 1)[0]
+
+    def set_display_created_at(self):
+        """DMに、表示用の送信日時を display_date と display_time としてセットする。
+
+        display_date はスレッドの日付の区切りに表示する日付で、
+        同じ年は「9月15日」、それ以外は「2025年9月15日」。
+        display_time はDMに表示する時刻で「14:31」。
+
+        戻り値はなく、渡された self に.display_dateと.display_timeをセットする。
+        """
+        now = timezone.localtime()
+        local_created_at = timezone.localtime(self.created_at)
+
+        # strftimeを使用すると09月15日のように0埋めになってしまうため
+        month_day = f"{local_created_at.month}月{local_created_at.day}日"
+
+        if local_created_at.year == now.year:
+            self.display_date = month_day
+        else:
+            self.display_date = f"{local_created_at.year}年{month_day}"
+
+        self.display_time = local_created_at.strftime("%H:%M")
+
+    def decorate(self, account: Account) -> None:
+        """スレッドの表示用にデータを整える。
+
+        戻り値はなく、渡された self に下記をセットする。
+        is_mine : 自分が送ったDMかどうか
+        display_date : スレッドの日付の区切りに表示する日付
+        display_time : DMに表示する時刻
+        """
+        self.is_mine = self.sender_id == account.x_user_id
+        self.set_display_created_at()
+
+        if self.media.all():
+            self.strip_media_link()
+
+
+class DirectMessageMediaManager(models.Manager):
+    def all_media_keys(self) -> QuerySet[str]:
+        """すべてのDMメディアのmedia_key(id)を返す"""
+        return self.values_list("media_key", flat=True)
+
+    def bulk_create_from_responses(
+        self,
+        media_responses: list[MediaResponseData],
+        dm_media_pairs: list[DirectMessageMediaPair],
+    ) -> None:
+        """リストで渡したメディアのうち、未保存のものを保存する。
+
+        media_responses: 保存したいメディア。
+        dm_media_pairs: メディアキーとそれに紐づくDMのIDの組のリスト。組がないメディアは保存しない。
+        """
+        saved_media_keys = set(self.all_media_keys())
+        dm_id_by_media_key = {
+            pair["media_key"]: pair["direct_message_id"] for pair in dm_media_pairs
+        }
+        media_list = []
+
+        for response in media_responses:
+            media_key = response["media_key"]
+            direct_message_id = dm_id_by_media_key.get(media_key)
+
+            if media_key in saved_media_keys:
+                continue
+
+            # グループDMのメディアなど、紐づくDMを保存していないメディアは保存できないため
+            if direct_message_id is None:
+                continue
+
+            media = DirectMessageMedia(
+                media_key=media_key,
+                direct_message_id=direct_message_id,
+                media_type=response.get("type"),
+                url=response.get("url"),
+                alt_text=response.get("alt_text"),
+                width=response.get("width"),
+                height=response.get("height"),
+                duration_ms=response.get("duration_ms"),
+            )
+            media_list.append(media)
+            saved_media_keys.add(media_key)
+
+        self.bulk_create(media_list)
+
 
 class DirectMessageMedia(models.Model):
     """DMメディア情報(画像・動画)"""
+
+    objects = DirectMessageMediaManager()
 
     class MediaType(models.TextChoices):
         PHOTO = "photo", "写真"
@@ -71,10 +468,10 @@ class DirectMessageMedia(models.Model):
     media_type = models.CharField(
         max_length=12, choices=MediaType.choices, help_text="メディアの種類"
     )
-    url = models.CharField(help_text="メディアのURL")
+    url = models.CharField(blank=True, null=True, help_text="メディアのURL")
     alt_text = models.TextField(blank=True, null=True, help_text="代替テキスト")
-    width = models.IntegerField(help_text="メディアの横幅(px)")
-    height = models.IntegerField(help_text="メディアの縦幅(px)")
+    width = models.IntegerField(blank=True, null=True, help_text="メディアの横幅(px)")
+    height = models.IntegerField(blank=True, null=True, help_text="メディアの縦幅(px)")
     duration_ms = models.IntegerField(
         blank=True, null=True, help_text="動画の長さ(m秒)"
     )

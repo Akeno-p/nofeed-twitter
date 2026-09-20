@@ -1,0 +1,14 @@
+<!-- prettier-ignore -->
+<div data-dm-media class="grid grid-cols-2 gap-2">
+  {% for media in direct_message.media.all %}
+    {% if media.url %}
+    <img
+      class="rounded-xl aspect-square object-cover w-full mt-2 hover:cursor-pointer"
+      src="{{ media.url }}"
+      alt="{{ media.alt_text }}"
+    />
+    {% else %}
+    <p class="text-slate-500 mt-2">※ 動画は表示できません。</p>
+    {% endif %}
+  {% endfor %}
+</div>
