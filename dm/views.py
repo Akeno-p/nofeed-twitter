@@ -123,9 +123,7 @@ def post_dm(request):
         dm_event_id, conversation, request.user, dm_text
     )
 
-    Conversation.objects.update_last_message_at(
-        conversation, direct_message.created_at
-    )
+    Conversation.objects.update_last_message_at(conversation, direct_message.created_at)
 
     conversations = Conversation.objects.for_display(request.user)
 
@@ -221,7 +219,7 @@ def _save_dms(
     not_saved_user_ids = XUser.objects.not_saved_user_ids(participant_ids)
 
     x_user_responses = []
-    
+
     for start in range(0, len(not_saved_user_ids), GET_USERS_MAX_IDS):
         user_ids = not_saved_user_ids[start : start + GET_USERS_MAX_IDS]
 
