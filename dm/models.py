@@ -76,6 +76,7 @@ class ConversationManager(models.Manager):
         """1対1のDMのリストから会話を保存する。
 
         未保存の会話は新しく作成し、保存済みの会話は最後のメッセージ日時を更新する。
+        保存済みの会話の会話相手が空の場合は、保存できるようになっていれば埋め直す。
 
         dm_responses: 保存したいDM。
         saved_user_ids: 保存済みのXユーザーID。会話相手が未保存の場合は会話相手を空にする。
@@ -129,15 +130,30 @@ class ConversationManager(models.Manager):
                 conversations_by_dm_conversation_id[dm_conversation_id] = conversation
                 continue
 
+            is_updated = False
+
             if (
                 conversation.last_message_at is None
                 or last_message_at > conversation.last_message_at
             ):
                 conversation.last_message_at = last_message_at
+                is_updated = True
+
+            # 会話相手が凍結などで保存できていなかった場合に、保存できていれば埋め直すため
+            if conversation.participant_id is None:
+                participant_id = Conversation.participant_id_from(
+                    dm_conversation_id, account
+                )
+
+                if participant_id in saved_user_ids:
+                    conversation.participant_id = participant_id
+                    is_updated = True
+
+            if is_updated:
                 update_conversations.append(conversation)
 
         self.bulk_create(new_conversations)
-        self.bulk_update(update_conversations, ["last_message_at"])
+        self.bulk_update(update_conversations, ["last_message_at", "participant"])
         return conversations_by_dm_conversation_id
 
 
