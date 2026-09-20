@@ -13,12 +13,14 @@
   {% endif %}
   <div class="flex-1 min-w-0">
     <div class="flex gap-2 items-center">
-      <p class="font-semibold truncate">
-        {{ conversation.participant.name|default:"ユーザー情報なし" }}
-      </p>
+      {% if conversation.participant %}
+      <p class="font-semibold truncate">{{ conversation.participant.name }}</p>
       <p class="font-light text-slate-500 truncate">
         @{{ conversation.participant.username }}
       </p>
+      {% else %}
+      <p class="font-semibold truncate">ユーザー情報なし</p>
+      {% endif %}
       <p class="font-light text-slate-500 ml-auto shrink-0">
         {{ conversation.display_last_message_at }}
       </p>
