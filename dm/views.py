@@ -64,12 +64,12 @@ def save_all_dms(request):
 
     saved_dm_ids = set(DirectMessage.objects.all_dm_ids())
 
-    status, result = _fetch_new_dms(request, saved_dm_ids)
+    fetch_status, fetch_result = _fetch_new_dms(request, saved_dm_ids)
 
-    if status == "error":
-        return JsonResponse(result)
+    if fetch_status == "error":
+        return JsonResponse(fetch_result)
 
-    dm_responses, media_responses = result
+    dm_responses, media_responses = fetch_result
 
     # グループDMは対象に含めない
     one_to_one_dm_responses = [
