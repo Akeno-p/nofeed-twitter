@@ -126,6 +126,9 @@ STATIC_URL = "static/"
 # プロジェクト共通の静的ファイルの置き場
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+# collectstatic で静的ファイルを集約する先
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

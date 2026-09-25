@@ -1,10 +1,19 @@
+# OS が自動生成するファイル
 .DS_Store
-node_modules/
-venv/
-__pycache__/
-db.sqlite3
-.env
-output.css
 
-# テスト用のスクリプト
-x_api_test.py
+# 依存パッケージ
+venv/
+node_modules/
+
+# Python のキャッシュ
+__pycache__/
+
+# ローカルの DB
+db.sqlite3
+
+# 秘密情報
+.env
+
+# ビルド・コマンドで生成されるファイル
+output.css
+staticfiles/
