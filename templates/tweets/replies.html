@@ -234,7 +234,8 @@
       const formData = new FormData();
       formData.append("replyText", replyText);
       formData.append("replyId", replyId);
-      const imageList = replyImages[replyId];
+      const imageList = (replyImages[replyId] ??= []);
+      console.log(imageList);
       for (const image of imageList) {
         formData.append("images", image.file);
       }
