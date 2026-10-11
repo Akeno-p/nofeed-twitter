@@ -40,7 +40,7 @@ Xは人との繋がりや仕事の幅を広げる優れたツールですが、�
 ## 技術スタック
 
 - フロントエンド：Tailwind v4.3 / jQuery 4
-- バックエンド：Django 5.2　/ Python 3.14
+- バックエンド：Django 5.2　/ Python 3.12
 - インフラ：ConoHa VPS
   - OS：AlmaLinux
   - webサーバー：Nginx
