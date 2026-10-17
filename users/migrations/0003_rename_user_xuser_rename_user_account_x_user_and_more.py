@@ -6,7 +6,6 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dm', '0002_initial'),
         ('tweets', '0002_initial'),
         ('users', '0002_remove_account_access_token_expires_at'),
     ]
